@@ -1,0 +1,2449 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Financial Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f172a; color: #e2e8f0; min-height: 100vh; }
+
+    /* ---- Header ---- */
+    .header { background: linear-gradient(135deg, #1e293b, #0f172a); border-bottom: 1px solid #334155; padding: 16px 28px; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+    .header h1 { font-size: 1.35rem; font-weight: 700; color: #f1f5f9; }
+    .header-left { display: flex; align-items: center; gap: 12px; }
+    .header-right { display: flex; gap: 8px; flex-wrap: wrap; }
+    .period { background: #38bdf8; color: #0f172a; padding: 4px 12px; border-radius: 20px; font-weight: 600; font-size: 0.78rem; white-space: nowrap; }
+
+    /* ---- File control buttons ---- */
+    .btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: 8px; font-size: 0.8rem; font-weight: 600; cursor: pointer; border: none; transition: all 0.15s; white-space: nowrap; }
+    .btn-primary { background: #38bdf8; color: #0f172a; }
+    .btn-primary:hover { background: #7dd3fc; }
+    .btn-secondary { background: #1e293b; color: #94a3b8; border: 1px solid #334155; }
+    .btn-secondary:hover { border-color: #38bdf8; color: #38bdf8; }
+    label.btn { cursor: pointer; }
+
+    /* ---- Tab bar ---- */
+    .tab-bar { background: #0f172a; border-bottom: 2px solid #1e293b; padding: 0 28px; display: flex; gap: 0; }
+    .tab-btn { padding: 12px 20px; font-size: 0.82rem; font-weight: 600; color: #475569; background: none; border: none; border-bottom: 2px solid transparent; margin-bottom: -2px; cursor: pointer; transition: all 0.15s; white-space: nowrap; display: flex; align-items: center; gap: 7px; }
+    .tab-btn:hover { color: #94a3b8; }
+    .tab-btn.active { color: #38bdf8; border-bottom-color: #38bdf8; }
+
+    /* ---- Month pill bar ---- */
+    .month-bar { background: #0f172a; border-bottom: 1px solid #1e293b; padding: 10px 28px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; min-height: 48px; }
+    .month-bar-label { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #475569; margin-right: 4px; }
+    .pill { padding: 5px 14px; border-radius: 20px; font-size: 0.78rem; font-weight: 600; cursor: pointer; border: 1px solid #334155; color: #64748b; background: #1e293b; transition: all 0.15s; white-space: nowrap; }
+    .pill:hover { border-color: #38bdf8; color: #38bdf8; }
+    .pill.active { background: #38bdf8; color: #0f172a; border-color: #38bdf8; }
+    .no-data-msg { color: #475569; font-size: 0.8rem; }
+
+    /* ---- Container / shared ---- */
+    .container { max-width: 1400px; margin: 0 auto; padding: 20px 28px; }
+    .section-label { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #475569; margin-bottom: 10px; margin-top: 22px; }
+    .card { background: #1e293b; border-radius: 12px; padding: 18px 22px; border: 1px solid #334155; }
+
+    /* ---- Empty state ---- */
+    .empty-state { text-align: center; padding: 80px 20px; color: #475569; }
+    .empty-state .icon { font-size: 3rem; margin-bottom: 16px; }
+    .empty-state h2 { font-size: 1.1rem; color: #64748b; margin-bottom: 8px; }
+    .empty-state p { font-size: 0.85rem; margin-bottom: 20px; }
+
+    /* ---- Summary cards ---- */
+    .summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+    .summary-card .lbl { font-size: 0.76rem; color: #94a3b8; margin-bottom: 5px; }
+    .summary-card .val { font-size: 1.6rem; font-weight: 700; }
+    .summary-card .sub { font-size: 0.7rem; color: #475569; margin-top: 3px; }
+    .green { color: #4ade80; } .red { color: #f87171; } .blue { color: #38bdf8; } .yellow { color: #facc15; }
+
+    /* ---- Charts ---- */
+    .charts-row { display: grid; grid-template-columns: 340px 1fr; gap: 12px; }
+    .chart-card h3 { font-size: 0.85rem; font-weight: 600; color: #94a3b8; margin-bottom: 12px; }
+    .cats-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+    /* ---- Category list ---- */
+    .cat-item { display: flex; align-items: center; padding: 8px 0; border-bottom: 1px solid #0f172a; }
+    .cat-item:last-child { border-bottom: none; }
+    .dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; margin-right: 9px; }
+    .cat-name { font-size: 0.82rem; color: #cbd5e1; flex: 1; }
+    .cat-pct { font-size: 0.7rem; color: #475569; margin-right: 10px; }
+    .cat-amt { font-size: 0.82rem; font-weight: 600; color: #e2e8f0; }
+    .bar-bg { width: 100%; height: 3px; background: #334155; border-radius: 2px; margin-top: 3px; }
+    .bar-fill { height: 100%; border-radius: 2px; }
+
+    /* ---- Transaction table ---- */
+    .tx-section { background: #1e293b; border-radius: 12px; border: 1px solid #334155; overflow: hidden; }
+    .tx-header { padding: 12px 20px; border-bottom: 1px solid #334155; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+    .tx-header h3 { font-size: 0.85rem; font-weight: 600; color: #94a3b8; }
+    .filters { display: flex; gap: 7px; flex-wrap: wrap; }
+    select, input[type=text] { background: #0f172a; border: 1px solid #334155; border-radius: 6px; padding: 5px 9px; color: #e2e8f0; font-size: 0.76rem; outline: none; }
+    select:focus, input[type=text]:focus { border-color: #38bdf8; }
+    table { width: 100%; border-collapse: collapse; }
+    thead th { padding: 8px 20px; text-align: left; font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: #475569; background: #0f172a; border-bottom: 1px solid #334155; }
+    tbody tr { border-bottom: 1px solid #162032; transition: background 0.1s; }
+    tbody tr:hover { background: #162032; }
+    tbody td { padding: 10px 20px; font-size: 0.8rem; color: #cbd5e1; }
+    .badge { display: inline-block; padding: 2px 7px; border-radius: 10px; font-size: 0.67rem; font-weight: 600; }
+    .acct-badge { background: #0f172a; color: #64748b; border: 1px solid #334155; }
+
+    /* ---- Trend section ---- */
+    #trend-section .chart-card { margin-bottom: 0; }
+
+    /* ---- Accounts tab ---- */
+    .scraper-card { display: flex; flex-direction: column; gap: 10px; }
+    .scraper-card h3 { font-size: 0.92rem; font-weight: 600; color: #cbd5e1; }
+    .scraper-card p { font-size: 0.8rem; color: #64748b; line-height: 1.5; }
+    .scatter-legend { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 12px; }
+    .legend-item { display: flex; align-items: center; gap: 5px; font-size: 0.75rem; color: #94a3b8; }
+    .legend-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .legend-line { width: 16px; height: 2px; flex-shrink: 0; }
+    .delta-pos { color: #4ade80; } .delta-neg { color: #f87171; } .delta-none { color: #475569; }
+    .nw-sub-row { font-size: 0.7rem; color: #475569; margin-top: 3px; }
+
+    /* ---- Forecast / Budget tab ---- */
+    .budget-header-row { display: grid; grid-template-columns: 1fr 110px 140px 180px 110px; gap: 12px; padding: 8px 20px; font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: #475569; background: #0f172a; border-bottom: 1px solid #334155; }
+    .budget-row { display: grid; grid-template-columns: 1fr 110px 140px 180px 110px; align-items: center; gap: 12px; padding: 10px 20px; border-bottom: 1px solid #162032; transition: background 0.1s; }
+    .budget-row:hover { background: #162032; }
+    .budget-row:last-child { border-bottom: none; }
+    .budget-cat { display: flex; align-items: center; gap: 8px; }
+    .budget-actual { font-size: 0.82rem; color: #cbd5e1; font-weight: 500; }
+    .budget-bar-wrap { background: #334155; border-radius: 4px; height: 8px; overflow: hidden; }
+    .budget-bar-fill { height: 100%; border-radius: 4px; transition: width 0.4s, background 0.4s; }
+    .budget-input-wrap { display: flex; align-items: center; gap: 4px; }
+    .budget-input-wrap span { color: #475569; font-size: 0.82rem; }
+    .budget-input { background: #0f172a; border: 1px solid #334155; border-radius: 6px; padding: 5px 8px; color: #e2e8f0; font-size: 0.82rem; width: 90px; text-align: right; outline: none; -moz-appearance: textfield; }
+    .budget-input::-webkit-inner-spin-button, .budget-input::-webkit-outer-spin-button { -webkit-appearance: none; }
+    .budget-input:focus { border-color: #38bdf8; }
+    .budget-remaining { font-size: 0.82rem; font-weight: 600; text-align: right; }
+    .ref-select { background: #0f172a; border: 1px solid #334155; border-radius: 8px; padding: 5px 10px; color: #e2e8f0; font-size: 0.78rem; outline: none; cursor: pointer; }
+    .ref-select:focus { border-color: #38bdf8; }
+    /* ---- Investment per-account rows ---- */
+    .inv-account-header { display:grid; grid-template-columns:1fr 148px 80px 122px 122px 44px; gap:10px; padding:7px 0; font-size:0.67rem; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; color:#475569; border-bottom:1px solid #334155; }
+    .inv-account-row { display:grid; grid-template-columns:1fr 148px 80px 122px 122px 44px; align-items:center; gap:10px; padding:9px 0; border-bottom:1px solid #162032; }
+    .inv-account-row:last-child { border-bottom:none; }
+    .inv-name { display:flex; align-items:center; gap:7px; min-width:0; overflow:hidden; }
+    .inv-field { display:flex; align-items:center; gap:3px; }
+    .inv-field .budget-input { flex:1; width:0; min-width:0; }
+    .inv-reset-btn { background:none; border:none; color:#38bdf8; font-size:0.8rem; cursor:pointer; padding:1px 3px; flex-shrink:0; line-height:1; }
+    .inv-reset-btn:hover { color:#7dd3fc; }
+    .inv-remove-btn { background:none; border:none; color:#475569; font-size:1.05rem; cursor:pointer; padding:2px 5px; border-radius:4px; display:block; margin:auto; }
+    .inv-remove-btn:hover { color:#f87171; background:#1e293b; }
+    @media(max-width:960px){ .inv-account-header,.inv-account-row{grid-template-columns:1fr 120px 68px 102px 102px 36px;gap:7px;} }
+    @media(max-width:640px){ .inv-account-header{display:none;} .inv-account-row{grid-template-columns:1fr 1fr;row-gap:6px;} }
+    @media(max-width:900px){ .budget-header-row,.budget-row{grid-template-columns:1fr 90px 120px 1fr 90px;} }
+    @media(max-width:640px){ .budget-header-row{display:none;} .budget-row{grid-template-columns:1fr 1fr;gap:6px;} .budget-bar-wrap,.budget-remaining{display:none;} }
+
+    @media(max-width:1024px){ .summary-grid{grid-template-columns:repeat(2,1fr);} .charts-row{grid-template-columns:1fr;} .cats-row{grid-template-columns:1fr;} }
+    @media(max-width:640px){ .summary-grid{grid-template-columns:1fr;} .container{padding:14px;} .tab-btn{padding:10px 12px;font-size:0.75rem;} }
+
+    /* ---- Planned Purchases ---- */
+    input[type="month"] { color-scheme: dark; }
+    .purchase-row { display:grid; grid-template-columns:1fr 88px 118px 124px 28px; align-items:center; gap:8px; padding:7px 0; border-bottom:1px solid #162032; }
+    .purchase-row:last-child { border-bottom:none; }
+    @media(max-width:700px){ .purchase-row { grid-template-columns:1fr 1fr; row-gap:5px; } }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════════ HEADER ═══════════════════ -->
+<div class="header">
+  <div class="header-left">
+    <h1>Financial Dashboard</h1>
+    <span class="period" id="period-label">No Data</span>
+  </div>
+  <div class="header-right">
+    <button class="btn btn-primary" id="refresh-btn" onclick="autoLoad()" title="Re-read both data folders">
+      ↻ Refresh
+    </button>
+    <label class="btn btn-secondary" title="Manually load a folder of CSVs and/or balance JSON files">
+      📁 Manual Load
+      <input type="file" id="folder-input" webkitdirectory style="display:none" onchange="handleFileList(this.files)">
+    </label>
+    <span id="load-status" style="font-size:0.75rem;color:#475569;align-self:center;white-space:nowrap"></span>
+  </div>
+</div>
+
+<!-- ═══════════════════ TAB BAR ═══════════════════ -->
+<div class="tab-bar">
+  <button class="tab-btn active" data-tab="spending" onclick="switchTab('spending')">
+    💸 Spending
+  </button>
+  <button class="tab-btn" data-tab="accounts" onclick="switchTab('accounts')">
+    🏦 Accounts &amp; Net Worth
+  </button>
+  <button class="tab-btn" data-tab="forecast" onclick="switchTab('forecast')">
+    📈 Forecast
+  </button>
+</div>
+
+<!-- ═══════════════════ MONTH PILL BAR (spending only) ═══════════════════ -->
+<div class="month-bar" id="month-bar">
+  <span class="no-data-msg">Loading…</span>
+</div>
+
+<!-- ═══════════════════ PANE: SPENDING ═══════════════════ -->
+<div id="pane-spending">
+  <div class="container" id="dashboard">
+    <div class="empty-state">
+      <div class="icon">📊</div>
+      <h2>Loading spending data…</h2>
+      <p>If data doesn't appear, open the dashboard via <code style="color:#a78bfa">node server.js</code><br>or use <strong>Manual Load</strong> to select your CSV folder.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════ PANE: ACCOUNTS ═══════════════════ -->
+<div id="pane-accounts" style="display:none">
+  <div class="container">
+
+    <!-- Scraper panel -->
+    <div class="section-label">Scraper</div>
+    <div class="card scraper-card">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap">
+        <div>
+          <h3>Run the Balance Scraper</h3>
+          <p>Opens a terminal, runs the scraper, then restarts the server. The browser will reconnect automatically.</p>
+        </div>
+        <button class="btn btn-primary" id="scraper-btn" onclick="runScraper()" style="flex-shrink:0">▶ Run Scraper</button>
+      </div>
+      <div id="scraper-status" style="font-size:0.78rem;color:#64748b;margin-top:4px"></div>
+    </div>
+
+    <!-- Net worth summary -->
+    <div class="section-label">Net Worth</div>
+    <div class="summary-grid" style="margin-bottom:0">
+      <div class="card summary-card">
+        <div class="lbl">Total Assets</div>
+        <div class="val green" id="nw-assets">—</div>
+        <div class="sub" id="nw-assets-sub">Checking · Savings · Investments</div>
+      </div>
+      <div class="card summary-card">
+        <div class="lbl">Total Debts</div>
+        <div class="val red" id="nw-debts">—</div>
+        <div class="sub" id="nw-debts-sub">Credit cards · Debts</div>
+      </div>
+      <div class="card summary-card">
+        <div class="lbl">Net Worth</div>
+        <div class="val" id="nw-net">—</div>
+        <div class="sub">Assets minus debts</div>
+      </div>
+      <div class="card summary-card">
+        <div class="lbl">Last Updated</div>
+        <div class="val blue" id="nw-date" style="font-size:1.1rem;padding-top:4px">—</div>
+        <div class="sub" id="nw-snapshots">No balance data loaded</div>
+      </div>
+    </div>
+
+    <!-- Scatter / history chart -->
+    <div class="section-label">Balance History</div>
+    <div class="card chart-card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+        <h3 style="margin:0">Account Balances Over Time</h3>
+        <span id="scatter-hint" style="font-size:0.75rem;color:#475569">Load balance JSON files via Open Folder to populate this chart.</span>
+      </div>
+      <div style="position:relative;height:380px"><canvas id="scatterChart"></canvas></div>
+    </div>
+
+    <!-- Current balances table -->
+    <div class="section-label">Current Balances</div>
+    <div class="tx-section">
+      <div class="tx-header">
+        <h3 id="bal-count">No data loaded</h3>
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <span id="bal-date" style="font-size:0.75rem;color:#475569"></span>
+          <div id="bal-type-filters" style="display:flex;gap:5px;flex-wrap:wrap"></div>
+        </div>
+      </div>
+      <div style="overflow-x:auto">
+        <table>
+          <thead><tr>
+            <th>Account</th>
+            <th>Type</th>
+            <th>Balance</th>
+            <th>Since Last Run</th>
+          </tr></thead>
+          <tbody id="bal-tbody"><tr><td colspan="4" style="text-align:center;color:#475569;padding:40px">Run the scraper and reload to see balances.</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+</div><!-- end pane-accounts -->
+
+<!-- ═══════════════════ PANE: FORECAST ═══════════════════ -->
+<div id="pane-forecast" style="display:none">
+  <div class="container">
+
+    <!-- ── Combined Forecast Chart ── -->
+    <div class="section-label" style="margin-top:4px">Portfolio &amp; Cash Forecast</div>
+    <div class="card" style="padding:20px 22px">
+      <div style="display:flex;align-items:center;gap:16px;margin-bottom:16px;flex-wrap:wrap">
+        <div style="display:flex;align-items:center;gap:10px;flex:1;min-width:200px">
+          <span class="lbl" style="margin:0;white-space:nowrap">Time Horizon</span>
+          <input type="range" id="inv-horizon" min="0.5" max="40" step="0.1" value="30"
+            style="flex:1;accent-color:#38bdf8;cursor:pointer"
+            oninput="document.getElementById('inv-horizon-val').textContent=parseFloat(this.value).toFixed(1)+' yrs';saveInvestParams();updateCombinedChart()">
+          <span id="inv-horizon-val" style="color:#38bdf8;font-weight:700;min-width:52px">30.0 yrs</span>
+        </div>
+      </div>
+      <div style="position:relative;height:420px"><canvas id="combinedForecastChart"></canvas></div>
+    </div>
+
+    <div style="margin-top:22px"></div>
+
+    <!-- ── Investment Accounts ── -->
+    <div class="section-label">Investment Accounts</div>
+    <div class="card" style="padding:20px 22px">
+      <div style="display:flex;justify-content:flex-end;margin-bottom:12px">
+        <button onclick="addCustomInvAccount()" class="btn btn-secondary" style="font-size:0.76rem;padding:5px 14px">+ Add Account</button>
+      </div>
+      <div class="inv-account-header">
+        <span>Account</span><span>Starting Balance</span><span>Return/yr</span>
+        <span>Your Contrib</span><span>Employer Match</span><span></span>
+      </div>
+      <div id="inv-account-rows" style="margin-bottom:4px">
+        <div style="padding:20px 0;color:#475569;font-size:0.82rem">Loading…</div>
+      </div>
+      <div style="font-size:0.68rem;color:#334155;margin-bottom:18px">Contributions are per paycheck · 2×/month</div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px">
+        <div class="card summary-card" style="padding:12px 14px;border-color:#1e3a5f">
+          <div class="lbl">Projected Value</div>
+          <div class="val blue" id="inv-proj-val" style="font-size:1.25rem">—</div>
+          <div class="sub" id="inv-proj-sub">at end of horizon</div>
+        </div>
+        <div class="card summary-card" style="padding:12px 14px;border-color:#1e3a5f">
+          <div class="lbl">Total Contributed</div>
+          <div class="val" id="inv-total-contrib" style="font-size:1.25rem">—</div>
+          <div class="sub" id="inv-contrib-sub">you + employer</div>
+        </div>
+        <div class="card summary-card" style="padding:12px 14px;border-color:#1e3a5f">
+          <div class="lbl">Growth from Returns</div>
+          <div class="val green" id="inv-growth" style="font-size:1.25rem">—</div>
+          <div class="sub">compounded earnings</div>
+        </div>
+        <div class="card summary-card" style="padding:12px 14px;border-color:#1e3a5f">
+          <div class="lbl">Total Gain</div>
+          <div class="val green" id="inv-growth-pct" style="font-size:1.25rem">—</div>
+          <div class="sub">vs. contributions only</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-top:22px"></div>
+
+    <!-- ── Cash Balance ── -->
+    <div class="section-label">Cash Balance</div>
+    <div class="card" style="padding:20px 22px">
+      <!-- Income control -->
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:16px">
+        <span class="lbl" style="margin:0;white-space:nowrap">Monthly Income</span>
+        <div style="display:flex;align-items:center;gap:4px">
+          <span style="color:#64748b;font-size:0.82rem">$</span>
+          <input class="budget-input" type="number" min="0" step="100" id="cash-income-input"
+            placeholder="auto" style="width:110px"
+            oninput="saveCashParams();updateCombinedChart()">
+          <button onclick="resetCashIncome()" title="Reset to last month's income"
+            style="background:none;border:none;color:#38bdf8;font-size:0.8rem;cursor:pointer;padding:1px 4px">↺</button>
+        </div>
+        <span id="cash-income-source" style="font-size:0.72rem;color:#475569"></span>
+      </div>
+      <!-- Summary cards -->
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px">
+        <div class="card summary-card" style="padding:12px 14px;border-color:#1e3a5f">
+          <div class="lbl">Current Liquid Balance</div>
+          <div class="val blue" id="cash-current-bal" style="font-size:1.25rem">—</div>
+          <div class="sub" id="cash-current-sub">Checking + Savings</div>
+        </div>
+        <div class="card summary-card" style="padding:12px 14px;border-color:#1e3a5f">
+          <div class="lbl">Net / Month</div>
+          <div class="val" id="cash-net-month" style="font-size:1.25rem">—</div>
+          <div class="sub" id="cash-net-sub">income − budget</div>
+        </div>
+        <div class="card summary-card" style="padding:12px 14px;border-color:#1e3a5f">
+          <div class="lbl">Projected Balance</div>
+          <div class="val" id="cash-proj-bal" style="font-size:1.25rem">—</div>
+          <div class="sub" id="cash-proj-sub">at end of horizon</div>
+        </div>
+      </div>
+      <!-- Planned Purchases -->
+      <div style="border-top:1px solid #334155;padding-top:16px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <span style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#475569">Planned Purchases</span>
+          <button onclick="addPlannedPurchase()" class="btn btn-secondary" style="font-size:0.76rem;padding:4px 12px">+ Add</button>
+        </div>
+        <div id="purchase-header" style="display:none;grid-template-columns:1fr 88px 118px 124px 28px;gap:8px;padding:0 0 6px;font-size:0.67rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:#475569;border-bottom:1px solid #334155">
+          <span>Label</span><span>Amount</span><span>Frequency</span><span>Start Date</span><span></span>
+        </div>
+        <div id="purchase-rows">
+          <div id="purchase-empty" style="color:#475569;font-size:0.8rem;padding:10px 0;font-style:italic">No planned purchases yet. Click + Add to create one.</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-top:28px"></div>
+
+    <!-- Controls row -->
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-top:4px">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <div class="section-label" style="margin:0">Monthly Budget</div>
+        <select class="ref-select" id="budget-ref-sel" onchange="renderForecastTab()">
+          <option value="avg">vs. Monthly Average</option>
+        </select>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <input type="text" id="budget-search" placeholder="Filter categories…" oninput="renderBudgetRows()" style="width:170px">
+        <button class="btn btn-secondary" style="font-size:0.76rem;padding:5px 12px" onclick="resetAllBudgets()" title="Clear all saved budget amounts">Reset All</button>
+      </div>
+    </div>
+
+    <!-- Summary cards -->
+    <div class="summary-grid" style="margin-top:10px">
+      <div class="card summary-card">
+        <div class="lbl">Total Budget</div>
+        <div class="val blue" id="fc-budget-total">—</div>
+        <div class="sub">across budgeted categories</div>
+      </div>
+      <div class="card summary-card">
+        <div class="lbl">Actual Spent</div>
+        <div class="val" id="fc-actual-total">—</div>
+        <div class="sub" id="fc-actual-sub">selected reference period</div>
+      </div>
+      <div class="card summary-card">
+        <div class="lbl">Remaining</div>
+        <div class="val" id="fc-remaining">—</div>
+        <div class="sub">budget minus actual</div>
+      </div>
+      <div class="card summary-card">
+        <div class="lbl">Over Budget</div>
+        <div class="val red" id="fc-over-count">—</div>
+        <div class="sub">categories exceeding limit</div>
+      </div>
+    </div>
+
+    <!-- Budget table -->
+    <div class="section-label">Category Budgets</div>
+    <div class="tx-section">
+      <div class="budget-header-row">
+        <span>Category</span>
+        <span>Actual</span>
+        <span style="padding-left:4px">Progress</span>
+        <span>Monthly Budget</span>
+        <span style="text-align:right">Remaining</span>
+      </div>
+      <div id="budget-rows"></div>
+      <div id="budget-empty" style="display:none;text-align:center;padding:40px;color:#475569;font-size:0.85rem">
+        No spending categories found — load your CSV files first.
+      </div>
+    </div>
+
+  </div>
+</div><!-- end pane-forecast -->
+
+
+<!-- ═══════════════════ SCRIPT ═══════════════════ -->
+<script>
+// ══════════════════════════════════════════════════════════
+//  CONSTANTS
+// ══════════════════════════════════════════════════════════
+const SKIP = new Set(['Savings Transfer','Internal Transfers','Credit Card Payment']);
+
+// Categories that are rolled up into a parent group (expandable)
+const CAT_GROUPS = {
+  'Food':                    ['Dining & Drinks', 'Groceries'],
+  'Physical & Mental Health':['Entertainment & Rec.', 'Health & Wellness', 'Personal Care'],
+};
+
+// Categories hidden entirely from charts, lists, and budget tab
+const CAT_HIDDEN = new Set(['Travel & Vacation', 'Fees', 'Taxes', 'Uncategorized']);
+
+// Reverse map: child category → parent group name
+const CHILD_TO_GROUP = {};
+Object.entries(CAT_GROUPS).forEach(([g, kids]) => kids.forEach(k => { CHILD_TO_GROUP[k] = g; }));
+
+const CAT_COLORS = {
+  'Dining & Drinks':'#f87171','Groceries':'#4ade80','Shopping':'#facc15',
+  'Entertainment & Rec.':'#a78bfa','Auto & Transport':'#38bdf8','Health & Wellness':'#fb923c',
+  'Bills & Utilities':'#e879f9','Pets':'#34d399','Loan Payment':'#ef4444',
+  'Home & Garden':'#86efac','Personal Care':'#f9a8d4','Software & Tech':'#818cf8',
+  'Education':'#d97706',
+  // Group colors
+  'Food':'#fb923c',
+  'Physical & Mental Health':'#c084fc',
+};
+
+const TYPE_COLORS = {
+  'Checking':'#4ade80','Savings':'#38bdf8','Credit Card':'#f87171',
+  'Investment':'#a78bfa','Loan':'#fb923c','Cash':'#facc15','Other':'#64748b'
+};
+
+const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const MONTH_ABBR  = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+const getColor = c => CAT_COLORS[c] || '#64748b';
+
+// Build a grouped, hidden-filtered array of { name, value, children } from a raw catArr.
+// children is null for standalone categories, array of [cat, val] pairs for groups.
+function applyGrouping(catArr) {
+  const groupTotals = {}, groupKids = {}, ungrouped = [];
+  catArr.forEach(([cat, val]) => {
+    if (CAT_HIDDEN.has(cat)) return;
+    const g = CHILD_TO_GROUP[cat];
+    if (g) {
+      groupTotals[g]  = (groupTotals[g]  || 0) + val;
+      groupKids[g]    = groupKids[g] || [];
+      groupKids[g].push([cat, val]);
+    } else {
+      ungrouped.push({ name: cat, value: val, children: null });
+    }
+  });
+  const result = [];
+  Object.keys(CAT_GROUPS).forEach(g => {
+    if (groupTotals[g]) result.push({ name: g, value: +groupTotals[g].toFixed(2), children: groupKids[g].sort((a,b) => b[1]-a[1]) });
+  });
+  ungrouped.forEach(r => result.push(r));
+  return result.sort((a, b) => b.value - a.value);
+}
+const fmt = n => '$' + Math.abs(n).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+
+// ══════════════════════════════════════════════════════════
+//  STATE
+// ══════════════════════════════════════════════════════════
+const monthData     = {};   // { 'YYYY-MM': { label, transactions[] } }
+let   balanceHistory = [];  // sorted array of balance snapshot objects
+let   activeKey      = 'all';
+let   activeTab      = 'spending';
+const CI             = {};  // Chart.js instances
+let   expandedCatGroups    = new Set();  // groups open in the category list
+let   expandedBudgetGroups = new Set();  // groups open in the budget tab
+
+// ══════════════════════════════════════════════════════════
+//  PARSE
+// ══════════════════════════════════════════════════════════
+function parseCSV(text) {
+  const lines = text.trim().split('\n');
+  const rows = [];
+  for (let i = 1; i < lines.length; i++) {
+    const vals = []; let inQ = false, cur = '';
+    for (const ch of lines[i]) {
+      if (ch === '"') { inQ = !inQ; }
+      else if (ch === ',' && !inQ) { vals.push(cur.trim()); cur = ''; }
+      else cur += ch;
+    }
+    vals.push(cur.trim());
+    if (vals.length < 11) continue;
+    rows.push({
+      date: vals[0], accountType: vals[2], accountName: vals[3],
+      institution: vals[5], name: (vals[6]||vals[7]||vals[9]||'').replace(/,/g,''),
+      amount: parseFloat(vals[8])||0, category: vals[10]||'Uncategorized'
+    });
+  }
+  return rows;
+}
+
+function filenameToKey(name) {
+  const m = name.replace(/\.csv$/i,'').match(/^([A-Za-z]+)[_\s-](\d{4})$/);
+  if (!m) return { key: name, label: name };
+  const [, month, year] = m;
+  const idx = MONTH_NAMES.findIndex(mn => mn.toLowerCase() === month.toLowerCase());
+  if (idx < 0) return { key: name, label: name };
+  return { key: `${year}-${String(idx+1).padStart(2,'0')}`, label: `${MONTH_NAMES[idx]} ${year}` };
+}
+
+// ══════════════════════════════════════════════════════════
+//  FILE LOADING
+// ══════════════════════════════════════════════════════════
+async function handleFileList(files) {
+  const fileArr = Array.from(files);
+
+  // ── CSVs → spending tab ──
+  const csvFiles = fileArr.filter(f => f.name.toLowerCase().endsWith('.csv'));
+  for (const f of csvFiles) {
+    const text = await f.text();
+    const { key, label } = filenameToKey(f.name);
+    monthData[key] = { label, transactions: parseCSV(text) };
+  }
+
+  // ── balance JSON files → accounts tab ──
+  const jsonFiles = fileArr.filter(f => /^balances.*\.json$/i.test(f.name));
+  for (const f of jsonFiles) {
+    try {
+      const data = JSON.parse(await f.text());
+      if (data.date && Array.isArray(data.accounts)) {
+        // Deduplicate by date (keep latest file if multiple share a date)
+        balanceHistory = balanceHistory.filter(s => s.date !== data.date);
+        balanceHistory.push(data);
+      }
+    } catch { /* skip malformed JSON */ }
+  }
+  balanceHistory.sort((a, b) => a.date.localeCompare(b.date));
+
+  // ── Refresh UI ──
+  if (csvFiles.length) {
+    const keys = Object.keys(monthData).sort();
+    activeKey = keys.length === 1 ? keys[0] : 'all';
+    buildDashboard();
+    updatePills();
+    updatePeriodLabel();
+  }
+  if (jsonFiles.length && activeTab === 'accounts') {
+    renderAccountsTab();
+  } else if (jsonFiles.length) {
+    // Badge indicator that new balance data is ready
+    document.querySelector('[data-tab="accounts"]').textContent = '🏦 Accounts & Net Worth ●';
+  }
+}
+
+// ══════════════════════════════════════════════════════════
+//  TAB SWITCHING
+// ══════════════════════════════════════════════════════════
+function switchTab(tab) {
+  activeTab = tab;
+  document.querySelectorAll('.tab-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.tab === tab);
+  });
+  // Strip the ● indicator if switching to accounts
+  if (tab === 'accounts') {
+    document.querySelector('[data-tab="accounts"]').textContent = '🏦 Accounts & Net Worth';
+  }
+  document.getElementById('pane-spending').style.display  = tab === 'spending'  ? 'block' : 'none';
+  document.getElementById('pane-accounts').style.display  = tab === 'accounts'  ? 'block' : 'none';
+  document.getElementById('pane-forecast').style.display  = tab === 'forecast'  ? 'block' : 'none';
+  document.getElementById('month-bar').style.display      = tab === 'spending'  ? 'flex'  : 'none';
+  if (tab === 'accounts') renderAccountsTab();
+  if (tab === 'forecast') renderForecastTab();
+}
+
+// ══════════════════════════════════════════════════════════
+//  SPENDING TAB HELPERS
+// ══════════════════════════════════════════════════════════
+function updatePills() {
+  const bar = document.getElementById('month-bar');
+  const keys = Object.keys(monthData).sort();
+  if (!keys.length) { bar.innerHTML = '<span class="no-data-msg">No CSV files found — use Manual Load or check your RocketMoneyCSVs folder.</span>'; return; }
+  let html = '<span class="month-bar-label">View:</span>';
+  html += `<span class="pill${activeKey==='all'?' active':''}" onclick="selectMonth('all')">All Months</span>`;
+  keys.forEach(k => { html += `<span class="pill${activeKey===k?' active':''}" onclick="selectMonth('${k}')">${monthData[k].label}</span>`; });
+  html += `<span style="font-size:0.72rem;color:#475569;margin-left:8px">${keys.length} month${keys.length!==1?'s':''} loaded</span>`;
+  bar.innerHTML = html;
+}
+
+function selectMonth(key) {
+  activeKey = key; updatePills(); updatePeriodLabel(); refresh();
+}
+
+function updatePeriodLabel() {
+  const el = document.getElementById('period-label');
+  const keys = Object.keys(monthData).sort();
+  if (!keys.length) { el.textContent = 'No Data'; return; }
+  if (activeKey !== 'all') { el.textContent = monthData[activeKey]?.label || activeKey; return; }
+  if (keys.length === 1) { el.textContent = monthData[keys[0]].label; return; }
+  el.textContent = `${monthData[keys[0]].label} – ${monthData[keys[keys.length-1]].label}`;
+}
+
+function getActiveTxns() {
+  if (activeKey === 'all') return Object.values(monthData).flatMap(m => m.transactions);
+  return monthData[activeKey]?.transactions || [];
+}
+
+function isMultiMonth() { return activeKey === 'all' && Object.keys(monthData).length > 1; }
+
+// ══════════════════════════════════════════════════════════
+//  STATS
+// ══════════════════════════════════════════════════════════
+function computeStats(txns) {
+  const incomeTxns  = txns.filter(t => t.category==='Income' && t.amount<0);
+  const spendTxns   = txns.filter(t => t.amount>0 && !SKIP.has(t.category) && t.category!=='Income');
+  const savingsTxns = txns.filter(t => t.category==='Savings Transfer' && t.amount>0);
+  const loanTxns    = txns.filter(t => t.category==='Loan Payment' && t.amount>0);
+  const totalIncome = incomeTxns.reduce((s,t) => s+Math.abs(t.amount),0);
+  const totalSpend  = spendTxns.reduce((s,t)  => s+t.amount,0);
+  const totalSaved  = savingsTxns.reduce((s,t) => s+t.amount,0);
+  const totalLoans  = loanTxns.reduce((s,t)    => s+t.amount,0);
+  const catMap = {}; spendTxns.forEach(t => { catMap[t.category]=(catMap[t.category]||0)+t.amount; });
+  const catArr = Object.entries(catMap).sort((a,b)=>b[1]-a[1]);
+  const accMap = {}; spendTxns.forEach(t => { accMap[t.accountName]=(accMap[t.accountName]||0)+t.amount; });
+  const accArr = Object.entries(accMap).sort((a,b)=>b[1]-a[1]);
+  return { incomeTxns, spendTxns, totalIncome, totalSpend, totalSaved, totalLoans, net:totalIncome-totalSpend, catArr, accArr };
+}
+
+// ══════════════════════════════════════════════════════════
+//  BUILD / REFRESH SPENDING DASHBOARD
+// ══════════════════════════════════════════════════════════
+function buildDashboard() {
+  document.getElementById('dashboard').innerHTML = `
+    <div class="section-label">Overview</div>
+    <div class="summary-grid">
+      <div class="card summary-card"><div class="lbl">Total Income</div><div class="val green" id="s-income">—</div><div class="sub" id="s-income-sub">—</div></div>
+      <div class="card summary-card"><div class="lbl">Total Spending</div><div class="val red" id="s-expenses">—</div><div class="sub" id="s-expenses-sub">—</div></div>
+      <div class="card summary-card"><div class="lbl">Net Cash Flow</div><div class="val" id="s-net">—</div><div class="sub">Income minus spending</div></div>
+      <div class="card summary-card"><div class="lbl">Saved / Debt Paid</div><div class="val blue" id="s-saved">—</div><div class="sub" id="s-saved-sub">—</div></div>
+    </div>
+    <div id="trend-section" style="display:none">
+      <div class="section-label">Monthly Trends</div>
+      <div class="card chart-card" style="margin-bottom:12px">
+        <h3>Income vs. Spending by Month</h3>
+        <div style="position:relative;height:240px"><canvas id="trendChart"></canvas></div>
+      </div>
+    </div>
+    <div class="section-label">Spending Breakdown</div>
+    <div class="charts-row">
+      <div class="card chart-card"><h3>By Category</h3><div style="position:relative;height:270px"><canvas id="catChart"></canvas></div></div>
+      <div class="card chart-card"><h3 id="time-chart-title">Daily Spending</h3><div style="position:relative;height:270px"><canvas id="dayChart"></canvas></div></div>
+    </div>
+    <div class="section-label">Detail</div>
+    <div class="cats-row">
+      <div class="card chart-card"><h3>Category Totals</h3><div id="cat-list"></div></div>
+      <div class="card chart-card"><h3>Spending by Account</h3><div style="position:relative;height:240px"><canvas id="accChart"></canvas></div></div>
+    </div>
+    <div class="section-label">Transactions</div>
+    <div class="tx-section">
+      <div class="tx-header">
+        <h3 id="tx-count">Transactions</h3>
+        <div class="filters">
+          <input type="text" id="q" placeholder="Search…">
+          <select id="cf"><option value="">All Categories</option></select>
+          <select id="af"><option value="">All Accounts</option></select>
+          <select id="mf"><option value="">All Months</option></select>
+          <select id="tf"><option value="">All Types</option><option value="expense">Expenses Only</option><option value="income">Income Only</option></select>
+        </div>
+      </div>
+      <div style="overflow-x:auto">
+        <table><thead><tr><th>Date</th><th>Description</th><th>Category</th><th>Account</th><th style="text-align:right">Amount</th></tr></thead>
+        <tbody id="tbody"></tbody></table>
+      </div>
+    </div>`;
+  refresh();
+}
+
+function refresh() {
+  const txns  = getActiveTxns();
+  const stats = computeStats(txns);
+  const multi = isMultiMonth();
+  renderSummary(stats);
+  renderCategoryChart(stats);
+  renderTimeChart(txns, multi);
+  renderAccountChart(stats);
+  renderCategoryList(stats);
+  renderTable(txns);
+  const ts = document.getElementById('trend-section');
+  if (ts) { ts.style.display = multi ? 'block' : 'none'; if (multi) renderTrendChart(); }
+}
+
+// ══════════════════════════════════════════════════════════
+//  SPENDING RENDER FUNCTIONS
+// ══════════════════════════════════════════════════════════
+function renderSummary({ totalIncome, totalSpend, net, totalSaved, totalLoans, incomeTxns, spendTxns }) {
+  document.getElementById('s-income').textContent = fmt(totalIncome);
+  document.getElementById('s-income-sub').textContent = incomeTxns.length + ' deposit' + (incomeTxns.length!==1?'s':'');
+  document.getElementById('s-expenses').textContent = fmt(totalSpend);
+  document.getElementById('s-expenses-sub').textContent = spendTxns.length + ' transaction' + (spendTxns.length!==1?'s':'');
+  const netEl = document.getElementById('s-net');
+  netEl.textContent = (net>=0?'+':'') + fmt(net);
+  netEl.className = 'val ' + (net>=0?'green':'red');
+  document.getElementById('s-saved').textContent = fmt(totalSaved+totalLoans);
+  document.getElementById('s-saved-sub').textContent = fmt(totalSaved)+' savings · '+fmt(totalLoans)+' loan pmts';
+}
+
+function renderCategoryChart({ catArr }) {
+  destroyChart('catChart');
+  CI['catChart'] = new Chart(document.getElementById('catChart'), {
+    type:'doughnut',
+    data:{ labels:catArr.map(([k])=>k), datasets:[{ data:catArr.map(([,v])=>+v.toFixed(2)), backgroundColor:catArr.map(([k])=>getColor(k)), borderColor:'#1e293b', borderWidth:2 }] },
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{position:'bottom',labels:{color:'#94a3b8',boxWidth:11,font:{size:10},padding:7}}, tooltip:{callbacks:{label:ctx=>` ${ctx.label}: ${fmt(ctx.raw)}`}} }, cutout:'62%' }
+  });
+}
+
+function renderTimeChart(txns, multi) {
+  destroyChart('dayChart');
+  const spendTxns = txns.filter(t=>t.amount>0&&!SKIP.has(t.category)&&t.category!=='Income');
+  const titleEl = document.getElementById('time-chart-title');
+  let labels, values;
+  if (multi) {
+    if (titleEl) titleEl.textContent = 'Monthly Spending';
+    const map = {};
+    spendTxns.forEach(t=>{ const k=t.date.slice(0,7); map[k]=(map[k]||0)+t.amount; });
+    const sk = Object.keys(map).sort();
+    labels = sk.map(k=>{ const[y,m]=k.split('-'); return `${MONTH_ABBR[parseInt(m)-1]} '${y.slice(2)}`; });
+    values = sk.map(k=>+map[k].toFixed(2));
+  } else {
+    if (titleEl) titleEl.textContent = 'Daily Spending';
+    const map = {};
+    spendTxns.forEach(t=>{ const d=t.date.slice(5); map[d]=(map[d]||0)+t.amount; });
+    labels = Object.keys(map).sort(); values = labels.map(d=>+map[d].toFixed(2));
+  }
+  CI['dayChart'] = new Chart(document.getElementById('dayChart'), {
+    type:'bar', data:{ labels, datasets:[{ label:'Spending', data:values, backgroundColor:'#38bdf855', borderColor:'#38bdf8', borderWidth:1, borderRadius:4 }] },
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>` ${fmt(ctx.raw)}`}}},
+      scales:{ x:{ticks:{color:'#64748b',font:{size:10}},grid:{color:'#1e293b'}}, y:{ticks:{color:'#64748b',font:{size:10},callback:v=>'$'+v},grid:{color:'#334155'}} } }
+  });
+}
+
+function renderTrendChart() {
+  destroyChart('trendChart');
+  const keys = Object.keys(monthData).sort();
+  const incomeByMonth=[], spendByMonth=[];
+  keys.forEach(k=>{
+    const txns = monthData[k].transactions;
+    incomeByMonth.push(+txns.filter(t=>t.category==='Income'&&t.amount<0).reduce((s,t)=>s+Math.abs(t.amount),0).toFixed(2));
+    spendByMonth.push(+txns.filter(t=>t.amount>0&&!SKIP.has(t.category)&&t.category!=='Income').reduce((s,t)=>s+t.amount,0).toFixed(2));
+  });
+  const labels = keys.map(k=>{ const[y,m]=k.split('-'); return `${MONTH_ABBR[parseInt(m)-1]} '${y.slice(2)}`; });
+  CI['trendChart'] = new Chart(document.getElementById('trendChart'), {
+    type:'bar', data:{ labels, datasets:[
+      { label:'Income',  data:incomeByMonth, backgroundColor:'#4ade8055', borderColor:'#4ade80', borderWidth:1.5, borderRadius:4 },
+      { label:'Spending',data:spendByMonth,  backgroundColor:'#f8717155', borderColor:'#f87171', borderWidth:1.5, borderRadius:4 }
+    ]},
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{labels:{color:'#94a3b8',font:{size:11}}}, tooltip:{callbacks:{label:ctx=>` ${ctx.dataset.label}: ${fmt(ctx.raw)}`}} },
+      scales:{ x:{ticks:{color:'#64748b',font:{size:11}},grid:{color:'#1e293b'}}, y:{ticks:{color:'#64748b',font:{size:10},callback:v=>'$'+v},grid:{color:'#334155'}} } }
+  });
+}
+
+function renderAccountChart({ accArr }) {
+  destroyChart('accChart');
+  const palette=['#38bdf8','#a78bfa','#4ade80','#f87171','#facc15','#fb923c'];
+  CI['accChart'] = new Chart(document.getElementById('accChart'), {
+    type:'bar', data:{ labels:accArr.map(([k])=>k), datasets:[{ data:accArr.map(([,v])=>+v.toFixed(2)), backgroundColor:accArr.map((_,i)=>palette[i%palette.length]), borderRadius:5 }] },
+    options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>` ${fmt(ctx.raw)}`}}},
+      scales:{ x:{ticks:{color:'#64748b',font:{size:10},callback:v=>'$'+v},grid:{color:'#334155'}}, y:{ticks:{color:'#94a3b8',font:{size:11}},grid:{color:'#1e293b'}} } }
+  });
+}
+
+function renderCategoryList({ catArr, totalSpend }) {
+  const el = document.getElementById('cat-list'); if (!el) return;
+  const maxVal = catArr[0]?.[1]||1; el.innerHTML='';
+  catArr.forEach(([cat,val]) => {
+    const pct=(val/totalSpend*100).toFixed(1), bw=(val/maxVal*100).toFixed(1), color=getColor(cat);
+    const div=document.createElement('div'); div.className='cat-item';
+    div.innerHTML=`<span class="dot" style="background:${color}"></span><div style="flex:1"><div style="display:flex;justify-content:space-between;align-items:center"><span class="cat-name">${cat}</span><span style="display:flex;align-items:center;gap:8px"><span class="cat-pct">${pct}%</span><span class="cat-amt">${fmt(val)}</span></span></div><div class="bar-bg"><div class="bar-fill" style="width:${bw}%;background:${color}"></div></div></div>`;
+    el.appendChild(div);
+  });
+}
+
+function renderTable(allTxns) {
+  const cfEl=document.getElementById('cf'), afEl=document.getElementById('af'), mfEl=document.getElementById('mf');
+  if (!cfEl) return;
+  const cats=[...new Set(allTxns.map(t=>t.category))].sort();
+  const accs=[...new Set(allTxns.map(t=>t.accountName))].sort();
+  const months=Object.keys(monthData).sort().map(k=>({key:k,label:monthData[k].label}));
+  cfEl.innerHTML='<option value="">All Categories</option>'+cats.map(c=>`<option>${c}</option>`).join('');
+  afEl.innerHTML='<option value="">All Accounts</option>'+accs.map(a=>`<option>${a}</option>`).join('');
+  mfEl.innerHTML='<option value="">All Months</option>'+months.map(m=>`<option value="${m.key}">${m.label}</option>`).join('');
+  ['q','cf','af','mf','tf'].forEach(id => {
+    const el=document.getElementById(id), clone=el.cloneNode(true);
+    el.parentNode.replaceChild(clone,el);
+    clone.addEventListener('input',applyFilters); clone.addEventListener('change',applyFilters);
+  });
+  applyFilters();
+}
+
+function applyFilters() {
+  const q=(document.getElementById('q')?.value||'').toLowerCase();
+  const catF=document.getElementById('cf')?.value||'', accF=document.getElementById('af')?.value||'';
+  const monF=document.getElementById('mf')?.value||'', typeF=document.getElementById('tf')?.value||'';
+  const txns=getActiveTxns();
+  const filtered=txns.filter(t=>{
+    if(catF&&t.category!==catF)return false; if(accF&&t.accountName!==accF)return false;
+    if(monF&&!t.date.startsWith(monF))return false;
+    if(typeF==='expense'&&t.amount<=0)return false; if(typeF==='income'&&t.amount>=0)return false;
+    if(q&&!t.name.toLowerCase().includes(q)&&!t.category.toLowerCase().includes(q)&&!t.accountName.toLowerCase().includes(q))return false;
+    return true;
+  }).sort((a,b)=>b.date.localeCompare(a.date));
+  const countEl=document.getElementById('tx-count');
+  if(countEl) countEl.textContent=filtered.length+' Transaction'+(filtered.length!==1?'s':'');
+  const tbody=document.getElementById('tbody'); if(!tbody)return;
+  tbody.innerHTML=filtered.map(t=>{
+    const isIn=t.amount<0, amtColor=isIn?'#4ade80':'#f87171', catColor=getColor(t.category);
+    return `<tr><td style="color:#64748b;white-space:nowrap">${t.date}</td><td>${t.name}</td><td><span class="badge" style="background:${catColor}22;color:${catColor};border:1px solid ${catColor}44">${t.category}</span></td><td><span class="badge acct-badge">${t.accountName}</span></td><td style="text-align:right;color:${amtColor};font-weight:600;white-space:nowrap">${isIn?'+':''}${fmt(t.amount)}</td></tr>`;
+  }).join('');
+}
+
+// ══════════════════════════════════════════════════════════
+//  ACCOUNTS TAB
+// ══════════════════════════════════════════════════════════
+function renderAccountsTab() {
+  const hasData = balanceHistory.length > 0;
+  const latest  = hasData ? balanceHistory[balanceHistory.length - 1] : null;
+  const prev    = balanceHistory.length > 1 ? balanceHistory[balanceHistory.length - 2] : null;
+
+  // ── Net Worth cards ──
+  if (!hasData) {
+    ['nw-assets','nw-debts','nw-net','nw-date'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = '—';
+    });
+    const ns = document.getElementById('nw-snapshots');
+    if (ns) ns.textContent = 'No balance data loaded — run the scraper first.';
+    const hintEl = document.getElementById('scatter-hint');
+    if (hintEl) hintEl.style.display = 'inline';
+  } else {
+    const DEBT_TYPES_SET = new Set(['Credit Card', 'Debt', 'Loan']);
+    const debtAccts  = latest.accounts.filter(a => DEBT_TYPES_SET.has(a.type) || (a.value !== null && a.value < 0));
+    const assetAccts = latest.accounts.filter(a => !DEBT_TYPES_SET.has(a.type) && (a.value === null || a.value >= 0));
+    const totalDebts  = debtAccts.reduce((s, a)  => s + Math.abs(a.value || 0), 0);
+    const totalAssets = assetAccts.reduce((s, a) => s + (a.value || 0), 0);
+    const netWorth    = totalAssets - totalDebts;
+    document.getElementById('nw-assets').textContent = fmt(totalAssets);
+    document.getElementById('nw-debts').textContent  = fmt(totalDebts);
+    const nwEl = document.getElementById('nw-net');
+    nwEl.textContent  = (netWorth >= 0 ? '+' : '') + fmt(netWorth);
+    nwEl.className    = 'val ' + (netWorth >= 0 ? 'green' : 'red');
+    document.getElementById('nw-date').textContent = latest.date;
+    document.getElementById('nw-snapshots').textContent =
+      balanceHistory.length + ' snapshot' + (balanceHistory.length !== 1 ? 's' : '') +
+      (balanceHistory.length > 1 ? ` · from ${balanceHistory[0].date}` : '');
+    const hintEl = document.getElementById('scatter-hint');
+    if (hintEl) hintEl.style.display = balanceHistory.length < 2 ? 'inline' : 'none';
+  }
+
+  renderScatterChart();
+  renderBalancesTable(latest, prev);
+}
+
+// ── Scatter / line chart ──────────────────────────────────
+function renderScatterChart() {
+  destroyChart('scatterChart');
+  const canvas = document.getElementById('scatterChart');
+  if (!canvas) return;
+
+  if (balanceHistory.length === 0) {
+    // Draw placeholder text on the canvas
+    const ctx = canvas.getContext('2d');
+    canvas.width  = canvas.offsetWidth  || 600;
+    canvas.height = canvas.offsetHeight || 380;
+    ctx.fillStyle = '#334155';
+    ctx.font = '14px system-ui';
+    ctx.textAlign = 'center';
+    ctx.fillText('No balance data yet — run the scraper and reload.', canvas.width/2, canvas.height/2);
+    return;
+  }
+
+  // Collect unique account names across all snapshots
+  const accountNames = new Set();
+  balanceHistory.forEach(s => s.accounts.forEach(a => accountNames.add(a.name)));
+
+  // Map account name → type (from most recent snapshot that has it)
+  const nameToType = {};
+  balanceHistory.slice().reverse().forEach(s => {
+    s.accounts.forEach(a => { if (!nameToType[a.name]) nameToType[a.name] = a.type; });
+  });
+
+  const dates = balanceHistory.map(s => s.date);
+  const datasets = [];
+
+  // Net Worth line (primary, bold, dashed)
+  datasets.push({
+    label: '★ Net Worth',
+    data: balanceHistory.map(s => ({ x: s.date, y: +(s.summary.netWorth||0).toFixed(2) })),
+    borderColor: '#f1f5f9',
+    backgroundColor: '#f1f5f922',
+    borderWidth: 2.5,
+    borderDash: [6, 4],
+    pointRadius: 7,
+    pointStyle: 'rectRot',
+    showLine: true,
+    tension: 0.35,
+    order: 0,
+  });
+
+  // One dataset per account
+  [...accountNames].forEach((name, i) => {
+    const type  = nameToType[name] || 'Other';
+    const color = TYPE_COLORS[type] || '#64748b';
+    const data  = balanceHistory.map(s => {
+      const acct = s.accounts.find(a => a.name === name);
+      return acct && acct.value !== null ? { x: acct.x || s.date, y: acct.value } : null;
+    }).filter(Boolean);
+    if (!data.length) return;
+    datasets.push({
+      label: name,
+      data,
+      borderColor: color,
+      backgroundColor: color + '33',
+      borderWidth: 1.5,
+      pointRadius: 5,
+      showLine: true,
+      tension: 0.3,
+      order: 1,
+    });
+  });
+
+  CI['scatterChart'] = new Chart(canvas, {
+    type: 'line',
+    data: { labels: dates, datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: { color: '#94a3b8', boxWidth: 12, font: { size: 11 }, padding: 10,
+            filter: item => item.text !== null,
+          }
+        },
+        tooltip: {
+          callbacks: {
+            label: ctx => {
+              const v = ctx.parsed.y;
+              return ` ${ctx.dataset.label}: ${v < 0 ? '-' : ''}${fmt(v)}`;
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          type: 'category',
+          ticks: { color: '#64748b', font: { size: 11 } },
+          grid: { color: '#1e293b' },
+        },
+        y: {
+          ticks: {
+            color: '#64748b', font: { size: 10 },
+            callback: v => (v < 0 ? '-$' : '$') + Math.abs(v).toLocaleString(),
+          },
+          grid: { color: '#334155' },
+        }
+      }
+    }
+  });
+}
+
+// ── Balances table ────────────────────────────────────────
+let activeBalType = 'All';
+
+function renderBalancesTable(latest, prev) {
+  const tbody     = document.getElementById('bal-tbody');
+  const countEl   = document.getElementById('bal-count');
+  const dateEl    = document.getElementById('bal-date');
+  const filterEl  = document.getElementById('bal-type-filters');
+  if (!tbody) return;
+
+  if (!latest) {
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#475569;padding:40px">Run the scraper and reload the folder to see balances.</td></tr>';
+    if (countEl)  countEl.textContent = 'No data loaded';
+    if (filterEl) filterEl.innerHTML  = '';
+    return;
+  }
+
+  if (dateEl) dateEl.textContent = 'as of ' + latest.date;
+
+  // Build type filter pills from types present in the data
+  if (filterEl) {
+    const types = ['All', ...new Set(latest.accounts.map(a => a.type))];
+    // Reset active type if it no longer exists in the data
+    if (!types.includes(activeBalType)) activeBalType = 'All';
+    filterEl.innerHTML = types.map(t => {
+      const color  = t === 'All' ? '#94a3b8' : (TYPE_COLORS[t] || '#64748b');
+      const active = t === activeBalType;
+      const bg     = active ? color : 'transparent';
+      const txtCol = active ? '#0f172a' : color;
+      return `<span
+        onclick="activeBalType='${t}';renderBalancesTable(window._latestSnap,window._prevSnap)"
+        style="padding:3px 10px;border-radius:12px;font-size:0.72rem;font-weight:600;cursor:pointer;
+               border:1px solid ${color};background:${bg};color:${txtCol};transition:all 0.15s"
+      >${t}</span>`;
+    }).join('');
+  }
+
+  // Store refs so the pill onclick can re-call without arguments
+  window._latestSnap = latest;
+  window._prevSnap   = prev;
+
+  const filtered = activeBalType === 'All'
+    ? latest.accounts
+    : latest.accounts.filter(a => a.type === activeBalType);
+
+  if (countEl) countEl.textContent = filtered.length + ' Account' + (filtered.length !== 1 ? 's' : '') +
+    (activeBalType !== 'All' ? ` · ${activeBalType}` : '');
+
+  tbody.innerHTML = filtered.map(acct => {
+    const prevAcct = prev?.accounts.find(a => a.name === acct.name);
+    const delta    = (prevAcct && acct.value !== null && prevAcct.value !== null)
+      ? acct.value - prevAcct.value : null;
+
+    const typeColor = TYPE_COLORS[acct.type] || '#64748b';
+    const isDebt    = ['Credit Card', 'Loan'].includes(acct.type) || acct.value < 0;
+    const balColor  = isDebt ? '#f87171' : '#4ade80';
+
+    let deltaHtml = '<span class="delta-none">—</span>';
+    if (delta !== null) {
+      const sign = delta >= 0 ? '+' : '−';
+      // For debts, lower balance = good (green); for assets, higher = good (green)
+      const positive = isDebt ? delta < 0 : delta >= 0;
+      const cls  = positive ? 'delta-pos' : 'delta-neg';
+      deltaHtml  = `<span class="${cls}">${sign}${fmt(Math.abs(delta))}</span>`;
+    }
+
+    return `<tr>
+      <td style="font-weight:500">${acct.name}</td>
+      <td><span class="badge" style="background:${typeColor}22;color:${typeColor};border:1px solid ${typeColor}44">${acct.type}</span></td>
+      <td style="color:${balColor};font-weight:600">${acct.balance}</td>
+      <td>${deltaHtml}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ── Scraper launcher ──────────────────────────────────────
+async function runScraper() {
+  const btn    = document.getElementById('scraper-btn');
+  const status = document.getElementById('scraper-status');
+  btn.disabled = true;
+  btn.textContent = '⏳ Launching…';
+  status.textContent = '';
+  try {
+    const res = await fetch('/api/run-scraper', { method: 'POST' });
+    if (!res.ok) throw new Error('Server error');
+    btn.textContent = '✓ Terminal opened';
+    status.textContent = 'Scraper is running in a new terminal window. The server will restart when it finishes — refresh this page to load the new balances.';
+    status.style.color = '#4ade80';
+  } catch {
+    btn.textContent = '▶ Run Scraper';
+    status.textContent = 'Could not reach the server. Make sure node server.js is running.';
+    status.style.color = '#f87171';
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+// ══════════════════════════════════════════════════════════
+//  FORECAST / BUDGET TAB
+// ══════════════════════════════════════════════════════════
+const BUDGET_KEY = 'financial_dashboard_budgets';
+
+// Load persisted budgets from localStorage
+let budgets = (() => {
+  try { return JSON.parse(localStorage.getItem(BUDGET_KEY)) || {}; }
+  catch { return {}; }
+})();
+
+function saveBudgets() {
+  try { localStorage.setItem(BUDGET_KEY, JSON.stringify(budgets)); } catch {}
+}
+
+function setBudget(cat, raw) {
+  const val = parseFloat(raw);
+  if (!isNaN(val) && val >= 0) budgets[cat] = +val.toFixed(2);
+  else delete budgets[cat];
+  saveBudgets();
+  renderBudgetSummary();
+  renderBudgetRows();
+  updateCashForecastChart();
+}
+
+function resetAllBudgets() {
+  if (!confirm('Clear all saved budget amounts?')) return;
+  budgets = {};
+  saveBudgets();
+  renderForecastTab();
+}
+
+// Returns { category -> actual spend } for the chosen reference period
+function getActualsByCategory() {
+  const sel = document.getElementById('budget-ref-sel');
+  const ref = sel ? sel.value : 'avg';
+  const SKIP_CATS = new Set(['Savings Transfer','Internal Transfers','Credit Card Payment','Income',...CAT_HIDDEN]);
+
+  if (ref === 'avg') {
+    const keys = Object.keys(monthData);
+    if (!keys.length) return {};
+    const totals = {}, counts = {};
+    keys.forEach(k => {
+      monthData[k].transactions
+        .filter(t => t.amount > 0 && !SKIP_CATS.has(t.category))
+        .forEach(t => {
+          totals[t.category] = (totals[t.category] || 0) + t.amount;
+          counts[t.category] = (counts[t.category] || 0) + 1;
+        });
+    });
+    const avg = {};
+    Object.keys(totals).forEach(c => { avg[c] = +(totals[c] / keys.length).toFixed(2); });
+    return avg;
+  }
+
+  // Specific month
+  const txns = monthData[ref]?.transactions || [];
+  const map = {};
+  txns.filter(t => t.amount > 0 && !SKIP_CATS.has(t.category))
+      .forEach(t => { map[t.category] = +((map[t.category] || 0) + t.amount).toFixed(2); });
+  return map;
+}
+
+// ══════════════════════════════════════════════════════════
+//  INVESTMENT FORECAST
+// ══════════════════════════════════════════════════════════
+const INVEST_PARAMS_KEY   = 'financial_dashboard_invest_params';
+const INVEST_PALETTE      = ['#38bdf8','#4ade80','#a78bfa','#fb923c','#f472b6','#34d399','#facc15','#60a5fa'];
+let   forecastInitialized = false;
+
+// ── Persistence ───────────────────────────────────────────
+function loadInvestSaved() {
+  try { return JSON.parse(localStorage.getItem(INVEST_PARAMS_KEY)) || {}; } catch { return {}; }
+}
+
+function saveInvestParams() {
+  const saved    = loadInvestSaved();
+  const horizon  = parseFloat(document.getElementById('inv-horizon')?.value) || 30;
+  const accounts = readDOMInvAccounts();
+  try { localStorage.setItem(INVEST_PARAMS_KEY, JSON.stringify({ ...saved, horizon, accounts })); } catch {}
+}
+
+// ── Read current account rows from DOM ───────────────────
+function readDOMInvAccounts() {
+  const result = {};
+  document.querySelectorAll('.inv-account-row').forEach(row => {
+    const id        = row.dataset.id;
+    const isCustom  = row.dataset.custom === 'true';
+    const snapName  = row.dataset.snapname || '';
+    result[id] = {
+      isCustom,
+      snapName,
+      displayName:  isCustom
+        ? (row.querySelector('[data-field="name"]')?.value || id)
+        : snapName,
+      startBalance: parseFloat(row.querySelector('[data-field="startBalance"]')?.value) || 0,
+      annualReturn: parseFloat(row.querySelector('[data-field="annualReturn"]')?.value)  || 0,
+      contribution: parseFloat(row.querySelector('[data-field="contribution"]')?.value) || 0,
+      match:        parseFloat(row.querySelector('[data-field="match"]')?.value)        || 0,
+    };
+  });
+  return result;
+}
+
+// ── Build ordered account list (snapshot + custom) ───────
+function getInvAccountList() {
+  const saved      = loadInvestSaved();
+  const savedAccts = saved.accounts || {};
+
+  // Current investment accounts from latest balance snapshot
+  const snapAccts = [];
+  if (balanceHistory.length) {
+    balanceHistory[balanceHistory.length - 1].accounts
+      .filter(a => a.type === 'Investment')
+      .forEach(a => snapAccts.push({ name: a.name, snapBalance: a.value || 0 }));
+  }
+
+  const result = [];
+  const seen   = new Set();
+
+  // Snapshot accounts first
+  snapAccts.forEach(({ name, snapBalance }) => {
+    if (savedAccts[name]?.hidden) return;
+    seen.add(name);
+    const s = savedAccts[name] || {};
+    result.push({
+      id:           name,
+      displayName:  name,
+      isCustom:     false,
+      snapBalance,
+      startBalance: s.startBalance ?? snapBalance,
+      annualReturn: s.annualReturn  ?? 7,
+      contribution: s.contribution  ?? 0,
+      match:        s.match         ?? 0,
+    });
+  });
+
+  // Custom accounts saved previously
+  Object.entries(savedAccts).forEach(([id, s]) => {
+    if (!s.isCustom || seen.has(id) || s.hidden) return;
+    result.push({
+      id,
+      displayName:  s.displayName || 'New Account',
+      isCustom:     true,
+      snapBalance:  null,
+      startBalance: s.startBalance || 0,
+      annualReturn: s.annualReturn  || 7,
+      contribution: s.contribution  || 0,
+      match:        s.match         || 0,
+    });
+  });
+
+  return result;
+}
+
+// ── Render per-account rows ───────────────────────────────
+function renderInvAccountRows(accounts) {
+  const container = document.getElementById('inv-account-rows');
+  if (!container) return;
+
+  if (!accounts.length) {
+    container.innerHTML = '<div style="padding:20px 0;color:#475569;font-size:0.82rem">No investment accounts found. Click <strong style="color:#94a3b8">+ Add Account</strong> to add one manually, or load balance data containing Investment accounts.</div>';
+    return;
+  }
+
+  container.innerHTML = accounts.map((acct, i) => {
+    const color   = INVEST_PALETTE[i % INVEST_PALETTE.length];
+    const nameCell = acct.isCustom
+      ? `<input class="budget-input" data-field="name" value="${(acct.displayName).replace(/"/g,'&quot;')}"
+           style="width:100%" placeholder="Account name"
+           oninput="saveInvestParams();updateForecastChart()">`
+      : `<span class="cat-name" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${acct.displayName}</span>`;
+
+    const resetBtn = !acct.isCustom
+      ? `<button class="inv-reset-btn" title="Reset to latest snapshot balance"
+           onclick="resetSnapBalance('${acct.id.replace(/'/g,"\\'")}')">↺</button>`
+      : '';
+
+    const safeId = acct.id.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+
+    return `<div class="inv-account-row"
+        data-id="${acct.id.replace(/"/g,'&quot;')}"
+        data-custom="${acct.isCustom}"
+        data-snapname="${acct.displayName.replace(/"/g,'&quot;')}">
+      <div class="inv-name">
+        <span class="dot" style="background:${color};flex-shrink:0"></span>
+        ${nameCell}
+      </div>
+      <div class="inv-field">
+        <span style="color:#64748b;font-size:0.82rem">$</span>
+        <input class="budget-input" type="number" min="0" step="1000" data-field="startBalance"
+          value="${acct.startBalance}"
+          oninput="saveInvestParams();updateForecastChart()">
+        ${resetBtn}
+      </div>
+      <div class="inv-field">
+        <input class="budget-input" type="number" min="0" max="100" step="0.1" data-field="annualReturn"
+          value="${acct.annualReturn}"
+          oninput="saveInvestParams();updateForecastChart()">
+        <span style="color:#64748b;font-size:0.82rem">%</span>
+      </div>
+      <div class="inv-field">
+        <span style="color:#64748b;font-size:0.82rem">$</span>
+        <input class="budget-input" type="number" min="0" step="50" data-field="contribution"
+          value="${acct.contribution}"
+          oninput="saveInvestParams();updateForecastChart()">
+      </div>
+      <div class="inv-field">
+        <span style="color:#64748b;font-size:0.82rem">$</span>
+        <input class="budget-input" type="number" min="0" step="50" data-field="match"
+          value="${acct.match}"
+          oninput="saveInvestParams();updateForecastChart()">
+      </div>
+      <button class="inv-remove-btn" title="Remove" onclick="removeInvAccount('${safeId}')">×</button>
+    </div>`;
+  }).join('');
+}
+
+// ── Add / remove accounts ─────────────────────────────────
+function addCustomInvAccount() {
+  saveInvestParams();
+  const saved    = loadInvestSaved();
+  const newId    = 'custom-' + Date.now();
+  if (!saved.accounts) saved.accounts = {};
+  saved.accounts[newId] = { isCustom: true, displayName: 'New Account', startBalance: 0, annualReturn: 7, contribution: 0, match: 0 };
+  try { localStorage.setItem(INVEST_PARAMS_KEY, JSON.stringify(saved)); } catch {}
+  renderInvAccountRows(getInvAccountList());
+  updateForecastChart();
+}
+
+function removeInvAccount(id) {
+  saveInvestParams();
+  const saved = loadInvestSaved();
+  if (!saved.accounts) saved.accounts = {};
+  // Mark hidden so snapshot accounts don't reappear on next init
+  saved.accounts[id] = { ...(saved.accounts[id] || {}), hidden: true };
+  try { localStorage.setItem(INVEST_PARAMS_KEY, JSON.stringify(saved)); } catch {}
+  renderInvAccountRows(getInvAccountList());
+  updateForecastChart();
+}
+
+function resetSnapBalance(id) {
+  if (!balanceHistory.length) return;
+  const acct = balanceHistory[balanceHistory.length - 1].accounts.find(a => a.name === id);
+  if (!acct) return;
+  const row   = document.querySelector(`.inv-account-row[data-id="${id.replace(/"/g,'\\"')}"]`);
+  const input = row?.querySelector('[data-field="startBalance"]');
+  if (input) { input.value = (acct.value || 0).toFixed(2); saveInvestParams(); updateForecastChart(); }
+}
+
+// ── Init ──────────────────────────────────────────────────
+function initInvestInputs() {
+  const saved   = loadInvestSaved();
+  const horizon = saved.horizon ?? 30;
+  const slider  = document.getElementById('inv-horizon');
+  const label   = document.getElementById('inv-horizon-val');
+  if (slider) slider.value      = horizon;
+  if (label)  label.textContent = parseFloat(horizon).toFixed(1) + ' yrs';
+  renderInvAccountRows(getInvAccountList());
+}
+
+// ── Core math ─────────────────────────────────────────────
+function computeProjection(startBalance, annualReturnPct, contribPerPeriod, horizonYears) {
+  const r            = Math.pow(1 + annualReturnPct / 100, 1 / 24) - 1;
+  const totalPeriods = horizonYears * 24;
+  const portfolio    = [+startBalance.toFixed(2)];
+  const contribOnly  = [+startBalance.toFixed(2)];
+  let balance = startBalance, noReturn = startBalance;
+  for (let p = 1; p <= totalPeriods; p++) {
+    balance  = balance  * (1 + r) + contribPerPeriod;
+    noReturn = noReturn            + contribPerPeriod;
+    if (p % 24 === 0) { portfolio.push(+balance.toFixed(2)); contribOnly.push(+noReturn.toFixed(2)); }
+  }
+  return { portfolio, contribOnly };
+}
+
+// ── Combined chart + all summaries ───────────────────────
+function updateCombinedChart() {
+  const horizonYears  = parseFloat(document.getElementById('inv-horizon')?.value) || 30;
+  const horizonMonths = Math.round(horizonYears * 12);
+  const now    = new Date();
+  const setEl  = (id, txt, cls) => {
+    const el = document.getElementById(id); if (!el) return;
+    el.textContent = txt; if (cls) el.className = 'val ' + cls;
+  };
+
+  // Monthly x-axis labels
+  const labels = Array.from({ length: horizonMonths + 1 }, (_, i) => {
+    if (i === 0) return 'Now';
+    const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
+    return `${MONTH_ABBR[d.getMonth()]} '${String(d.getFullYear()).slice(2)}`;
+  });
+
+  // ── Investment accounts ─────────────────────────────────
+  const domAccts = [];
+  document.querySelectorAll('.inv-account-row').forEach((row, i) => {
+    const isCustom = row.dataset.custom === 'true';
+    domAccts.push({
+      displayName:  isCustom ? (row.querySelector('[data-field="name"]')?.value || 'Account') : row.dataset.snapname,
+      color:        INVEST_PALETTE[i % INVEST_PALETTE.length],
+      startBalance: parseFloat(row.querySelector('[data-field="startBalance"]')?.value) || 0,
+      annualReturn: parseFloat(row.querySelector('[data-field="annualReturn"]')?.value)  || 0,
+      contribution: parseFloat(row.querySelector('[data-field="contribution"]')?.value) || 0,
+      match:        parseFloat(row.querySelector('[data-field="match"]')?.value)        || 0,
+    });
+  });
+
+  const datasets  = [];
+  let totPort     = new Array(horizonMonths + 1).fill(0);
+  let totContrib  = new Array(horizonMonths + 1).fill(0);
+
+  domAccts.forEach(acct => {
+    // Monthly compounding; 2 paychecks per month
+    const r = Math.pow(1 + acct.annualReturn / 100, 1 / 12) - 1;
+    const contribPerMonth = (acct.contribution + acct.match) * 2;
+    const portfolio = [+acct.startBalance.toFixed(2)];
+    const contribOnly = [+acct.startBalance.toFixed(2)];
+    let bal = acct.startBalance, noRet = acct.startBalance;
+    for (let m = 1; m <= horizonMonths; m++) {
+      bal   = bal * (1 + r) + contribPerMonth;
+      noRet = noRet + contribPerMonth;
+      portfolio.push(+bal.toFixed(2));
+      contribOnly.push(+noRet.toFixed(2));
+    }
+    portfolio.forEach((v, i)   => { totPort[i]    += v; });
+    contribOnly.forEach((v, i) => { totContrib[i] += v; });
+    datasets.push({
+      label: acct.displayName, data: portfolio,
+      borderColor: acct.color, backgroundColor: acct.color + '18',
+      borderWidth: domAccts.length > 1 ? 1.5 : 2.5,
+      pointRadius: 0, pointHoverRadius: 4,
+      fill: domAccts.length === 1, tension: 0.35, order: 2,
+    });
+  });
+
+  if (domAccts.length > 1) {
+    datasets.unshift({
+      label: '★ Total Portfolio', data: totPort,
+      borderColor: '#f1f5f9', backgroundColor: '#f1f5f910',
+      borderWidth: 2.5, pointRadius: 0, pointHoverRadius: 5,
+      fill: true, tension: 0.35, order: 0,
+    });
+  }
+
+  datasets.push({
+    label: 'Contributions only', data: totContrib,
+    borderColor: '#334155', backgroundColor: 'transparent',
+    borderWidth: 1.5, borderDash: [5, 4], pointRadius: 0,
+    fill: false, tension: 0, order: 99,
+  });
+
+  // Investment summary cards
+  const totalStart = domAccts.reduce((s, a) => s + a.startBalance, 0);
+  const projVal    = totPort[totPort.length - 1];
+  const contribVal = totContrib[totContrib.length - 1] - totalStart;
+  const growth     = projVal - totalStart - contribVal;
+  const base       = totalStart + contribVal;
+  const gainPct    = base > 0 ? (projVal / base - 1) * 100 : 0;
+  setEl('inv-proj-val',      fmt(projVal), 'blue');
+  setEl('inv-total-contrib', fmt(contribVal));
+  setEl('inv-growth',        fmt(growth), 'green');
+  setEl('inv-growth-pct',    '+' + gainPct.toFixed(1) + '%', gainPct >= 0 ? 'green' : 'red');
+  const projSub = document.getElementById('inv-proj-sub');
+  if (projSub) projSub.textContent = `in ${horizonYears.toFixed(1)} yrs`;
+  const cSub = document.getElementById('inv-contrib-sub');
+  if (cSub) cSub.textContent = 'cumulative deposits';
+
+  // ── Cash balance ────────────────────────────────────────
+  const incomeInput = document.getElementById('cash-income-input');
+  const latestSnap  = balanceHistory.length ? balanceHistory[balanceHistory.length - 1] : null;
+  let currentLiquid = 0;
+  const liquidAccts = [];
+  if (latestSnap) {
+    latestSnap.accounts
+      .filter(a => a.type === 'Checking' || a.type === 'Savings')
+      .forEach(a => { currentLiquid += a.value || 0; liquidAccts.push(a.name); });
+  }
+
+  let monthlyIncome = 0, incomeSource = '';
+  const rawVal   = incomeInput?.value ?? '';
+  const override = rawVal !== '' ? parseFloat(rawVal) : NaN;
+  if (!isNaN(override) && override >= 0) {
+    monthlyIncome = override; incomeSource = 'manual entry';
+  } else {
+    const lastIncome = getLastMonthIncome();
+    if (lastIncome) {
+      monthlyIncome = lastIncome.value; incomeSource = `from ${lastIncome.label}`;
+      if (incomeInput) incomeInput.placeholder = lastIncome.value.toFixed(0);
+    } else { incomeSource = 'no CSV data'; }
+  }
+
+  const totalBudget = getTotalMonthlyBudget();
+  const netPerMonth = +(monthlyIncome - totalBudget).toFixed(2);
+
+  const srcEl = document.getElementById('cash-income-source');
+  if (srcEl) srcEl.textContent = incomeSource ? `(${incomeSource})` : '';
+  setEl('cash-current-bal', latestSnap ? fmt(currentLiquid) : '—', 'blue');
+  const subEl = document.getElementById('cash-current-sub');
+  if (subEl) subEl.textContent = liquidAccts.length ? liquidAccts.join(' + ') : 'Checking + Savings';
+  setEl('cash-net-month',
+    monthlyIncome > 0 || totalBudget > 0 ? (netPerMonth >= 0 ? '+' : '') + fmt(netPerMonth) : '—',
+    netPerMonth >= 0 ? 'green' : 'red');
+  const netSubEl = document.getElementById('cash-net-sub');
+  if (netSubEl) netSubEl.textContent = monthlyIncome > 0 || totalBudget > 0
+    ? `${fmt(monthlyIncome)} income − ${fmt(totalBudget)} budget` : 'set income & budget to compute';
+
+  // Cash projection — one point per month
+  const purchases = loadPurchases();
+  let cashBal = currentLiquid;
+  const cashBalances = [+cashBal.toFixed(2)];
+  for (let mo = 1; mo <= horizonMonths; mo++) {
+    cashBal += netPerMonth;
+    const d = new Date(now.getFullYear(), now.getMonth() + mo, 1);
+    purchases.forEach(p => { if (purchaseHitsMonth(p, d)) cashBal -= (p.amount || 0); });
+    cashBalances.push(+cashBal.toFixed(2));
+  }
+  const cashFinal = cashBalances[cashBalances.length - 1];
+  setEl('cash-proj-bal', latestSnap ? fmt(cashFinal) : '—', cashFinal >= currentLiquid ? 'green' : 'red');
+  const projSubEl = document.getElementById('cash-proj-sub');
+  if (projSubEl) projSubEl.textContent = `in ${horizonYears.toFixed(1)} yrs`;
+
+  const cashColor = cashFinal >= currentLiquid ? '#22d3ee' : '#f87171';
+  datasets.push({
+    label: '💧 Liquid Balance', data: cashBalances,
+    borderColor: cashColor, backgroundColor: cashColor + '18',
+    borderWidth: 2, pointRadius: 0, pointHoverRadius: 5,
+    fill: false, tension: 0.25, order: 1,
+  });
+
+  // ── Purchase annotations (month indices) ────────────────
+  const annotations = [];
+  purchases.forEach(p => {
+    if (!p.startDate || !(p.amount > 0)) return;
+    const lbl = p.name || fmt(p.amount);
+    let first = false;
+    for (let mo = 1; mo <= horizonMonths; mo++) {
+      const d = new Date(now.getFullYear(), now.getMonth() + mo, 1);
+      if (!purchaseHitsMonth(p, d)) continue;
+      if (!first) {
+        first = true;
+        annotations.push({ index: mo, label: lbl + (p.frequency !== 'single' ? ' ↻' : '') });
+        if (p.frequency === 'single') break;
+      } else if (p.frequency !== 'monthly') {
+        annotations.push({ index: mo, label: lbl });
+      }
+    }
+  });
+
+  // ── Annotation plugin ───────────────────────────────────
+  const purchaseLinePlugin = {
+    id: 'combinedPurchaseLines',
+    afterDraw(chart) {
+      const ann = chart.config.options._purchaseAnnotations;
+      if (!ann || !ann.length) return;
+      const { ctx, chartArea, scales } = chart;
+      const xScale = scales.x;
+      const byIdx = {};
+      ann.forEach(({ index, label }) => { (byIdx[index] = byIdx[index] || []).push(label); });
+      ctx.save();
+      Object.entries(byIdx).forEach(([idxStr, lbls]) => {
+        const x = xScale.getPixelForValue(parseInt(idxStr));
+        if (x < chartArea.left || x > chartArea.right) return;
+        ctx.beginPath(); ctx.setLineDash([4, 3]);
+        ctx.strokeStyle = '#64748b'; ctx.lineWidth = 1.5;
+        ctx.moveTo(x, chartArea.top); ctx.lineTo(x, chartArea.bottom);
+        ctx.stroke(); ctx.setLineDash([]);
+        const raw = lbls.join(', ');
+        const text = raw.length > 18 ? raw.slice(0, 17) + '…' : raw;
+        ctx.font = '9px system-ui, -apple-system, sans-serif';
+        ctx.fillStyle = '#94a3b8'; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+        ctx.fillText(text, x, chartArea.top + 4);
+      });
+      ctx.restore();
+    },
+  };
+
+  // ── Render ──────────────────────────────────────────────
+  destroyChart('combinedForecastChart');
+  const canvas = document.getElementById('combinedForecastChart');
+  if (!canvas) return;
+  CI['combinedForecastChart'] = new Chart(canvas, {
+    type: 'line',
+    plugins: [purchaseLinePlugin],
+    data: { labels, datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      _purchaseAnnotations: annotations,
+      plugins: {
+        legend: { position: 'bottom', labels: { color: '#94a3b8', font: { size: 11 }, boxWidth: 20, padding: 14 } },
+        tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: ${fmt(ctx.parsed.y)}` } },
+      },
+      scales: {
+        x: { ticks: { color: '#64748b', font: { size: 10 }, maxTicksLimit: 13 }, grid: { color: '#1e293b' } },
+        y: {
+          ticks: {
+            color: '#64748b', font: { size: 10 },
+            callback: v => v >= 1_000_000 ? '$' + (v/1_000_000).toFixed(1)+'M'
+                        : v >= 1_000      ? '$' + (v/1_000).toFixed(0)+'K'
+                        : (v < 0 ? '-$' : '$') + Math.abs(v).toLocaleString(),
+          },
+          grid: { color: '#334155' },
+        },
+      },
+    },
+  });
+}
+
+function updateForecastChart()     { updateCombinedChart(); }
+function updateCashForecastChart() { updateCombinedChart(); }
+
+// ══════════════════════════════════════════════════════════
+//  CASH BALANCE FORECAST
+// ══════════════════════════════════════════════════════════
+const CASH_PARAMS_KEY = 'financial_dashboard_cash_params';
+let cashForecastInitialized = false;
+
+// ── Planned Purchases ─────────────────────────────────────
+const PURCHASES_KEY = 'financial_dashboard_purchases';
+
+function loadPurchases() {
+  try { return JSON.parse(localStorage.getItem(PURCHASES_KEY)) || []; } catch { return []; }
+}
+
+function savePurchasesData(arr) {
+  try { localStorage.setItem(PURCHASES_KEY, JSON.stringify(arr)); } catch {}
+}
+
+function addPlannedPurchase() {
+  const arr = loadPurchases();
+  const today = new Date();
+  const defaultDate = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}`;
+  arr.push({ id: String(Date.now()), name: '', amount: 0, frequency: 'single', startDate: defaultDate });
+  savePurchasesData(arr);
+  renderPurchaseRows();
+}
+
+function removePurchase(id) {
+  savePurchasesData(loadPurchases().filter(p => p.id !== id));
+  renderPurchaseRows();
+  updateCashForecastChart();
+}
+
+function updatePurchaseField(id, field, value) {
+  const arr = loadPurchases();
+  const p = arr.find(p => p.id === id);
+  if (!p) return;
+  if (field === 'amount') p.amount = parseFloat(value) || 0;
+  else p[field] = value;
+  savePurchasesData(arr);
+  updateCashForecastChart();
+}
+
+function renderPurchaseRows() {
+  const container = document.getElementById('purchase-rows');
+  const header    = document.getElementById('purchase-header');
+  const empty     = document.getElementById('purchase-empty');
+  if (!container) return;
+  const arr = loadPurchases();
+  if (!arr.length) {
+    container.innerHTML = '<div id="purchase-empty" style="color:#475569;font-size:0.8rem;padding:10px 0;font-style:italic">No planned purchases yet. Click + Add to create one.</div>';
+    if (header) header.style.display = 'none';
+    return;
+  }
+  if (header) header.style.display = 'grid';
+  container.innerHTML = arr.map(p => {
+    const sid = p.id.replace(/"/g,'&quot;');
+    return `<div class="purchase-row">
+      <input class="budget-input" placeholder="Label…" style="width:100%" value="${(p.name||'').replace(/"/g,'&quot;')}"
+        onchange="updatePurchaseField('${sid}','name',this.value)">
+      <div style="display:flex;align-items:center;gap:3px">
+        <span style="color:#64748b;font-size:0.82rem">$</span>
+        <input class="budget-input" type="number" min="0" step="10" style="flex:1;min-width:0" value="${p.amount||''}"
+          placeholder="0" onchange="updatePurchaseField('${sid}','amount',this.value)">
+      </div>
+      <select class="ref-select" style="width:100%" onchange="updatePurchaseField('${sid}','frequency',this.value)">
+        <option value="single"     ${p.frequency==='single'     ?'selected':''}>One-time</option>
+        <option value="monthly"    ${p.frequency==='monthly'    ?'selected':''}>Monthly</option>
+        <option value="biannually" ${p.frequency==='biannually' ?'selected':''}>Bi-annually</option>
+        <option value="yearly"     ${p.frequency==='yearly'     ?'selected':''}>Yearly</option>
+      </select>
+      <input class="budget-input" type="month" style="width:100%" value="${p.startDate||''}"
+        onchange="updatePurchaseField('${sid}','startDate',this.value)">
+      <button onclick="removePurchase('${sid}')"
+        style="background:none;border:none;color:#475569;font-size:1.1rem;cursor:pointer;padding:2px 4px;border-radius:4px;display:block;margin:auto"
+        onmouseenter="this.style.color='#f87171'" onmouseleave="this.style.color='#475569'">×</button>
+    </div>`;
+  }).join('');
+}
+
+function purchaseHitsMonth(p, monthDate) {
+  if (!p.startDate) return false;
+  const [sy, sm] = p.startDate.split('-').map(Number);
+  const start = new Date(sy, sm - 1, 1);
+  if (monthDate < start) return false;
+  const diff = (monthDate.getFullYear() - start.getFullYear()) * 12
+             + (monthDate.getMonth()    - start.getMonth());
+  switch (p.frequency) {
+    case 'single':     return diff === 0;
+    case 'monthly':    return true;
+    case 'biannually': return diff % 6 === 0;
+    case 'yearly':     return diff % 12 === 0;
+    default:           return false;
+  }
+}
+
+function getPurchaseAnnotations(now, horizon) {
+  const purchases = loadPurchases();
+  const annotations = [];
+  purchases.forEach(p => {
+    if (!p.startDate || !(p.amount > 0)) return;
+    const label = p.name || `$${p.amount}`;
+    let count = 0;
+    for (let i = 1; i <= horizon; i++) {
+      const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
+      if (purchaseHitsMonth(p, d)) {
+        count++;
+        // monthly: only annotate first occurrence to avoid clutter
+        if (p.frequency === 'monthly' && count > 1) continue;
+        const suffix = p.frequency !== 'single' && count === 1 ? ' ↻' : '';
+        annotations.push({ index: i, label: label + suffix });
+      }
+    }
+  });
+  return annotations;
+}
+
+function loadCashParams() {
+  try { return JSON.parse(localStorage.getItem(CASH_PARAMS_KEY)) || {}; } catch { return {}; }
+}
+
+function saveCashParams() {
+  const incomeInput = document.getElementById('cash-income-input');
+  const horizon = parseInt(document.getElementById('cash-horizon')?.value) || 12;
+  const raw = incomeInput?.value ?? '';
+  const incomeOverride = raw !== '' ? parseFloat(raw) : null;
+  try { localStorage.setItem(CASH_PARAMS_KEY, JSON.stringify({ incomeOverride, horizon })); } catch {}
+}
+
+function getLastMonthIncome() {
+  const keys = Object.keys(monthData).sort();
+  if (!keys.length) return null;
+  const lastKey = keys[keys.length - 1];
+  const txns = monthData[lastKey].transactions;
+  const income = txns.filter(t => t.category === 'Income' && t.amount < 0)
+                     .reduce((s, t) => s + Math.abs(t.amount), 0);
+  return income > 0 ? { value: +income.toFixed(2), label: monthData[lastKey].label } : null;
+}
+
+function getTotalMonthlyBudget() {
+  return +Object.values(budgets).reduce((s, v) => s + (v || 0), 0).toFixed(2);
+}
+
+function resetCashIncome() {
+  const input = document.getElementById('cash-income-input');
+  if (input) { input.value = ''; saveCashParams(); updateCashForecastChart(); }
+}
+
+function initCashForecastInputs() {
+  const saved = loadCashParams();
+  const slider = document.getElementById('cash-horizon');
+  const label  = document.getElementById('cash-horizon-val');
+  const input  = document.getElementById('cash-income-input');
+  const horizon = saved.horizon ?? 12;
+  if (slider) slider.value      = horizon;
+  if (label)  label.textContent = horizon + ' mo';
+  if (input && saved.incomeOverride != null) input.value = saved.incomeOverride;
+  renderPurchaseRows();
+}
+
+function updateCashForecastChart_REMOVED() {
+  const incomeInput = document.getElementById('cash-income-input');
+  const horizon = parseInt(document.getElementById('cash-horizon')?.value) || 12;
+
+  // Current liquid balance from latest snapshot
+  const latestSnap = balanceHistory.length ? balanceHistory[balanceHistory.length - 1] : null;
+  let currentLiquid = 0;
+  const liquidAccounts = [];
+  if (latestSnap) {
+    latestSnap.accounts
+      .filter(a => a.type === 'Checking' || a.type === 'Savings')
+      .forEach(a => { currentLiquid += a.value || 0; liquidAccounts.push(a.name); });
+  }
+
+  // Income: user override or last month's CSV
+  let monthlyIncome = 0, incomeSource = '';
+  const rawVal = incomeInput?.value ?? '';
+  const override = rawVal !== '' ? parseFloat(rawVal) : NaN;
+  if (!isNaN(override) && override >= 0) {
+    monthlyIncome = override;
+    incomeSource = 'manual entry';
+  } else {
+    const lastIncome = getLastMonthIncome();
+    if (lastIncome) {
+      monthlyIncome = lastIncome.value;
+      incomeSource = `from ${lastIncome.label}`;
+      if (incomeInput) incomeInput.placeholder = lastIncome.value.toFixed(0);
+    } else {
+      incomeSource = 'no CSV data';
+    }
+  }
+
+  const totalBudget  = getTotalMonthlyBudget();
+  const netPerMonth  = +(monthlyIncome - totalBudget).toFixed(2);
+
+  // Update source hint
+  const srcEl = document.getElementById('cash-income-source');
+  if (srcEl) srcEl.textContent = incomeSource ? `(${incomeSource})` : '';
+
+  // Summary cards
+  const setEl = (id, txt, cls) => {
+    const el = document.getElementById(id); if (!el) return;
+    el.textContent = txt; if (cls) el.className = 'val ' + cls;
+  };
+  setEl('cash-current-bal', latestSnap ? fmt(currentLiquid) : '—', 'blue');
+  const subEl = document.getElementById('cash-current-sub');
+  if (subEl) subEl.textContent = liquidAccounts.length ? liquidAccounts.join(' + ') : 'Checking + Savings';
+
+  setEl('cash-net-month',
+    monthlyIncome > 0 || totalBudget > 0 ? (netPerMonth >= 0 ? '+' : '') + fmt(netPerMonth) : '—',
+    netPerMonth >= 0 ? 'green' : 'red');
+  const netSubEl = document.getElementById('cash-net-sub');
+  if (netSubEl) netSubEl.textContent = monthlyIncome > 0 || totalBudget > 0
+    ? `${fmt(monthlyIncome)} income − ${fmt(totalBudget)} budget`
+    : 'set income & budget to compute';
+
+  // Projection — loop so purchases can be subtracted per-month
+  const now = new Date();
+  const purchases = loadPurchases();
+  let balance = currentLiquid;
+  const balances = [+balance.toFixed(2)];
+  for (let i = 1; i <= horizon; i++) {
+    balance += netPerMonth;
+    const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
+    purchases.forEach(p => { if (purchaseHitsMonth(p, d)) balance -= (p.amount || 0); });
+    balances.push(+balance.toFixed(2));
+  }
+  const projFinal = balances[balances.length - 1];
+  setEl('cash-proj-bal', latestSnap ? fmt(projFinal) : '—',
+    projFinal >= currentLiquid ? 'green' : 'red');
+  const projSubEl = document.getElementById('cash-proj-sub');
+  if (projSubEl) projSubEl.textContent = `in ${horizon} month${horizon !== 1 ? 's' : ''}`;
+
+  // X-axis labels
+  const xLabels = Array.from({ length: horizon + 1 }, (_, i) => {
+    if (i === 0) return 'Now';
+    const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
+    return `${MONTH_ABBR[d.getMonth()]} '${String(d.getFullYear()).slice(2)}`;
+  });
+
+  // Purchase annotations (vertical dashed lines)
+  const annotations = getPurchaseAnnotations(now, horizon);
+
+  const purchaseLinePlugin = {
+    id: 'cashPurchaseLines',
+    afterDraw(chart) {
+      const ann = chart.config.options._purchaseAnnotations;
+      if (!ann || !ann.length) return;
+      const { ctx, chartArea, scales } = chart;
+      const xScale = scales.x;
+      // Group by index
+      const byIdx = {};
+      ann.forEach(({ index, label }) => {
+        (byIdx[index] = byIdx[index] || []).push(label);
+      });
+      ctx.save();
+      Object.entries(byIdx).forEach(([idxStr, lbls]) => {
+        const x = xScale.getPixelForValue(parseInt(idxStr));
+        if (x < chartArea.left || x > chartArea.right) return;
+        // Dashed vertical line
+        ctx.beginPath();
+        ctx.setLineDash([4, 3]);
+        ctx.strokeStyle = '#64748b';
+        ctx.lineWidth = 1.5;
+        ctx.moveTo(x, chartArea.top);
+        ctx.lineTo(x, chartArea.bottom);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        // Label at top of chart area
+        const raw = lbls.join(', ');
+        const text = raw.length > 18 ? raw.slice(0, 17) + '…' : raw;
+        ctx.font = '9px system-ui, -apple-system, sans-serif';
+        ctx.fillStyle = '#94a3b8';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'top';
+        ctx.fillText(text, x, chartArea.top + 4);
+      });
+      ctx.restore();
+    },
+  };
+
+  // Chart
+  destroyChart('cashForecastChart');
+  const canvas = document.getElementById('cashForecastChart');
+  if (!canvas) return;
+  const lineColor = projFinal >= currentLiquid ? '#4ade80' : '#f87171';
+  CI['cashForecastChart'] = new Chart(canvas, {
+    type: 'line',
+    plugins: [purchaseLinePlugin],
+    data: {
+      labels: xLabels,
+      datasets: [{
+        label: 'Liquid Balance',
+        data: balances,
+        borderColor:      lineColor,
+        backgroundColor:  lineColor + '18',
+        borderWidth:      2.5,
+        pointRadius:      horizon > 18 ? 0 : 3,
+        pointHoverRadius: 5,
+        fill:    true,
+        tension: 0,
+      }],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      _purchaseAnnotations: annotations,
+      plugins: {
+        legend: { position: 'bottom', labels: { color: '#94a3b8', font: { size: 11 }, boxWidth: 20, padding: 14 } },
+        tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: ${fmt(ctx.parsed.y)}` } },
+      },
+      scales: {
+        x: { ticks: { color: '#64748b', font: { size: 10 }, maxTicksLimit: 13 }, grid: { color: '#1e293b' } },
+        y: {
+          ticks: {
+            color: '#64748b', font: { size: 10 },
+            callback: v => (v < 0 ? '-$' : '$') + Math.abs(v).toLocaleString(),
+          },
+          grid: { color: '#334155' },
+        },
+      },
+    },
+  });
+}
+
+function renderForecastTab() {
+  // Init investment inputs once (preserves user edits across tab switches)
+  if (!forecastInitialized) {
+    initInvestInputs();
+    forecastInitialized = true;
+  }
+  if (!cashForecastInitialized) {
+    initCashForecastInputs();
+    cashForecastInitialized = true;
+  }
+  updateCombinedChart();
+
+  // Populate reference-period selector
+  const sel = document.getElementById('budget-ref-sel');
+  if (sel) {
+    const current = sel.value;
+    const keys = Object.keys(monthData).sort();
+    sel.innerHTML = '<option value="avg">vs. Monthly Average</option>' +
+      keys.map(k => `<option value="${k}">${monthData[k].label}</option>`).join('');
+    if ([...sel.options].some(o => o.value === current)) sel.value = current;
+  }
+
+  renderBudgetSummary();
+  renderBudgetRows();
+}
+
+function renderBudgetSummary() {
+  const actuals = getActualsByCategory();
+  const cats = Object.keys(actuals);
+
+  let budgetTotal = 0, actualTotal = 0, overCount = 0;
+  cats.forEach(c => {
+    const b = budgets[c];
+    const a = actuals[c] || 0;
+    if (b !== undefined) {
+      budgetTotal += b;
+      actualTotal += a;
+      if (a > b) overCount++;
+    }
+  });
+
+  const remaining = budgetTotal - actualTotal;
+
+  const set = (id, txt, cls) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.textContent = txt;
+    if (cls) el.className = 'val ' + cls;
+  };
+
+  const hasBudgets = Object.keys(budgets).length > 0;
+  set('fc-budget-total', hasBudgets ? fmt(budgetTotal) : '—');
+  set('fc-actual-total', hasBudgets ? fmt(actualTotal) : '—');
+
+  const remEl = document.getElementById('fc-remaining');
+  if (remEl) {
+    remEl.textContent  = hasBudgets ? (remaining >= 0 ? '+' : '') + fmt(remaining) : '—';
+    remEl.className    = 'val ' + (remaining >= 0 ? 'green' : 'red');
+  }
+  set('fc-over-count', hasBudgets ? String(overCount) : '—');
+
+  // Sub-label for actual
+  const subEl = document.getElementById('fc-actual-sub');
+  if (subEl) {
+    const sel = document.getElementById('budget-ref-sel');
+    const ref = sel ? sel.value : 'avg';
+    subEl.textContent = ref === 'avg'
+      ? `avg of ${Object.keys(monthData).length} month(s)`
+      : (monthData[ref]?.label || ref);
+  }
+}
+
+function makeBudgetRow(cat, actual, isChild) {
+  const budget   = budgets[cat];
+  const color    = getColor(cat);
+  let pct = 0, barColor = '#4ade80';
+  if (budget > 0) {
+    pct = Math.min((actual / budget) * 100, 100);
+    barColor = pct >= 100 ? '#f87171' : pct >= 75 ? '#facc15' : '#4ade80';
+  }
+  let remHtml = '<span style="color:#475569">—</span>';
+  if (budget !== undefined) {
+    const rem = budget - actual;
+    remHtml = `<span style="color:${rem>=0?'#4ade80':'#f87171'};font-weight:600">${rem>=0?'+':'−'}${fmt(Math.abs(rem))}</span>`;
+  }
+  const style = isChild ? 'padding-left:32px;background:#162032' : '';
+  return `<div class="budget-row" style="${style}">
+    <div class="budget-cat">
+      ${isChild ? '<span style="width:14px;flex-shrink:0"></span>' : ''}
+      <span class="dot" style="background:${color}"></span>
+      <span class="cat-name" style="${isChild?'color:#94a3b8':''}">${cat}</span>
+    </div>
+    <div class="budget-actual">${fmt(actual)}</div>
+    <div class="budget-bar-wrap"><div class="budget-bar-fill" style="width:${pct.toFixed(1)}%;background:${barColor}"></div></div>
+    <div class="budget-input-wrap">
+      <span>$</span>
+      <input class="budget-input" type="number" min="0" step="10" placeholder="—"
+        value="${budget !== undefined ? budget : ''}"
+        data-cat="${cat.replace(/"/g,'&quot;')}"
+        onchange="setBudget(this.dataset.cat,this.value)"
+        onblur="setBudget(this.dataset.cat,this.value)">
+    </div>
+    <div class="budget-remaining">${remHtml}</div>
+  </div>`;
+}
+
+function renderBudgetRows() {
+  const container = document.getElementById('budget-rows');
+  const emptyEl   = document.getElementById('budget-empty');
+  if (!container) return;
+
+  const actuals = getActualsByCategory();
+  const q       = (document.getElementById('budget-search')?.value || '').toLowerCase();
+
+  // All known cats: union of actuals + saved budgets, excluding hidden
+  const allCats = [...new Set([
+    ...Object.keys(actuals),
+    ...Object.keys(budgets).filter(c => !CAT_HIDDEN.has(c)),
+  ])];
+
+  // Partition into groups and ungrouped
+  const groupActuals = {}, groupKids = {}, ungrouped = [];
+  allCats.forEach(cat => {
+    const g = CHILD_TO_GROUP[cat];
+    if (g) {
+      groupActuals[g] = (groupActuals[g] || 0) + (actuals[cat] || 0);
+      groupKids[g]    = groupKids[g] || [];
+      if (!groupKids[g].includes(cat)) groupKids[g].push(cat);
+    } else {
+      if (!ungrouped.includes(cat)) ungrouped.push(cat);
+    }
+  });
+
+  const rows = [];
+
+  // Groups (in definition order)
+  Object.keys(CAT_GROUPS).forEach(group => {
+    const kids = groupKids[group];
+    if (!kids?.length) return;
+    if (q && !group.toLowerCase().includes(q) && !kids.some(k => k.toLowerCase().includes(q))) return;
+
+    const expanded    = expandedBudgetGroups.has(group);
+    const groupActual = groupActuals[group] || 0;
+    const groupBudget = kids.reduce((s, k) => s + (budgets[k] || 0), 0);
+    const hasBudget   = kids.some(k => budgets[k] !== undefined);
+    const color       = getColor(group);
+    let pct = 0, barColor = '#4ade80';
+    if (hasBudget && groupBudget > 0) {
+      pct = Math.min((groupActual / groupBudget) * 100, 100);
+      barColor = pct >= 100 ? '#f87171' : pct >= 75 ? '#facc15' : '#4ade80';
+    }
+    let remHtml = `<span style="color:#475569;font-size:0.72rem">expand to set</span>`;
+    if (hasBudget) {
+      const rem = groupBudget - groupActual;
+      remHtml = `<span style="color:${rem>=0?'#4ade80':'#f87171'};font-weight:600">${rem>=0?'+':'−'}${fmt(Math.abs(rem))}</span>`;
+    }
+
+    // Escape group name for inline onclick
+    const esc = group.replace(/'/g, "\\'");
+    rows.push(`<div class="budget-row" style="cursor:pointer;background:#1a2744"
+        onclick="expandedBudgetGroups.has('${esc}')?expandedBudgetGroups.delete('${esc}'):expandedBudgetGroups.add('${esc}');renderBudgetRows()">
+      <div class="budget-cat">
+        <span style="width:14px;flex-shrink:0;font-size:0.65rem;color:#475569">${expanded?'▼':'▶'}</span>
+        <span class="dot" style="background:${color}"></span>
+        <span class="cat-name" style="font-weight:600;color:#e2e8f0">${group}</span>
+      </div>
+      <div class="budget-actual">${fmt(groupActual)}</div>
+      <div class="budget-bar-wrap"><div class="budget-bar-fill" style="width:${pct.toFixed(1)}%;background:${barColor}"></div></div>
+      <div style="font-size:0.75rem;color:#64748b">${hasBudget ? fmt(groupBudget)+' total' : 'expand to set'}</div>
+      <div class="budget-remaining">${remHtml}</div>
+    </div>`);
+
+    if (expanded) {
+      kids.forEach(cat => {
+        if (q && !cat.toLowerCase().includes(q) && !group.toLowerCase().includes(q)) return;
+        rows.push(makeBudgetRow(cat, actuals[cat] || 0, true));
+      });
+    }
+  });
+
+  // Ungrouped cats
+  ungrouped.sort().forEach(cat => {
+    if (q && !cat.toLowerCase().includes(q)) return;
+    rows.push(makeBudgetRow(cat, actuals[cat] || 0, false));
+  });
+
+  if (!rows.length) {
+    container.innerHTML = '';
+    if (emptyEl) emptyEl.style.display = 'block';
+    return;
+  }
+  if (emptyEl) emptyEl.style.display = 'none';
+  container.innerHTML = rows.join('');
+}
+
+// ══════════════════════════════════════════════════════════
+//  AUTO-LOAD  (fetches from local server API on startup / refresh)
+// ══════════════════════════════════════════════════════════
+async function autoLoad() {
+  const btn    = document.getElementById('refresh-btn');
+  const status = document.getElementById('load-status');
+  if (btn) { btn.disabled = true; btn.textContent = '↻ Loading…'; }
+  if (status) status.textContent = '';
+
+  let csvCount = 0, jsonCount = 0, serverUp = false;
+
+  try {
+    const [spendRes, balRes] = await Promise.all([
+      fetch('/api/spending').catch(() => null),
+      fetch('/api/balances').catch(() => null),
+    ]);
+
+    if (spendRes && spendRes.ok) {
+      serverUp = true;
+      const { files } = await spendRes.json();
+      for (const { name, content } of files) {
+        const { key, label } = filenameToKey(name);
+        monthData[key] = { label, transactions: parseCSV(content) };
+        csvCount++;
+      }
+    }
+
+    if (balRes && balRes.ok) {
+      serverUp = true;
+      const { files } = await balRes.json();
+      for (const { name, content } of files) {
+        try {
+          const data = JSON.parse(content);
+          if (data.date && Array.isArray(data.accounts)) {
+            balanceHistory = balanceHistory.filter(s => s.date !== data.date);
+            balanceHistory.push(data);
+            jsonCount++;
+          }
+        } catch { /* skip malformed */ }
+      }
+      balanceHistory.sort((a, b) => a.date.localeCompare(b.date));
+    }
+  } catch { /* server not running — silent fallback */ }
+
+  // Rebuild spending tab
+  const keys = Object.keys(monthData).sort();
+  if (keys.length) {
+    // Keep activeKey if still valid, else default
+    if (!monthData[activeKey]) activeKey = keys.length === 1 ? keys[0] : 'all';
+    buildDashboard();
+    updatePills();
+    updatePeriodLabel();
+  } else {
+    updatePills();
+  }
+
+  // Rebuild accounts tab if visible
+  if (activeTab === 'accounts') renderAccountsTab();
+
+  // Status message
+  if (btn)  { btn.disabled = false; btn.textContent = '↻ Refresh'; }
+  if (status) {
+    if (!serverUp) {
+      status.textContent = 'Server not detected — use Manual Load';
+      status.style.color = '#f87171';
+    } else {
+      status.textContent = `${csvCount} CSV${csvCount !== 1 ? 's' : ''} · ${jsonCount} snapshot${jsonCount !== 1 ? 's' : ''} loaded`;
+      status.style.color = '#4ade80';
+      setTimeout(() => { if (status) status.textContent = ''; }, 4000);
+    }
+  }
+}
+
+// ══════════════════════════════════════════════════════════
+//  CHART DESTROY HELPER
+// ══════════════════════════════════════════════════════════
+function destroyChart(id) { if (CI[id]) { CI[id].destroy(); delete CI[id]; } }
+
+// ══════════════════════════════════════════════════════════
+//  EMBEDDED CSV  (March 2026 pre-loaded so dashboard isn't empty)
+// ══════════════════════════════════════════════════════════
+const EMBEDDED_CSV = `Date,Original Date,Account Type,Account Name,Account Number,Institution Name,Name,Custom Name,Amount,Description,Category,Note,Ignored From,Tax Deductible,Transaction Tags
+2026-03-02,2026-03-02,Cash,USAA CLASSIC CHECKING,5747,USAA,Rocket Money Premium,,6,Rocket Money Premium ***********M3J4,Bills & Utilities,,,,
+2026-03-02,2026-03-02,Cash,USAA CLASSIC CHECKING,5747,USAA,DRY CREEK ANIMAL HOSPIT,,88.5,DRY CREEK ANIMAL HOSPIT 408-560-2882 CA,Pets,,,,
+2026-03-02,2026-03-02,Cash,USAA CLASSIC CHECKING,5747,USAA,Shell,,40,SHELL OIL 57444212807 SAN JOSE CA,Auto & Transport,,,,
+2026-03-02,2026-03-02,Cash,USAA CLASSIC CHECKING,5747,USAA,DD *DOORDASH SLURPABOW DOORDASH.COM,,27.05,DD *DOORDASH SLURPABOW DOORDASH.COM CA,Dining & Drinks,,,,
+2026-03-02,2026-03-02,Cash,USAA CLASSIC CHECKING,5747,USAA,F45 TRAINING WGE F45TRAINING.CCA,,15,F45 TRAINING WGE F45TRAINING.CCA,Health & Wellness,,,,
+2026-03-02,2026-03-02,Cash,USAA CLASSIC CHECKING,5747,USAA,McDonald's,,14.97,MCDONALD'S F35435 SAN JOSE CA,Dining & Drinks,,,,
+2026-03-02,2026-03-02,Cash,USAA CLASSIC CHECKING,5747,USAA,CKE*IKE'S PLACE SAN MAT,,3.29,CKE*IKE'S PLACE SAN MAT SAN MATEO CA,Dining & Drinks,,,,
+2026-03-02,2026-03-02,Cash,USAA CLASSIC CHECKING,5747,USAA,Venmo,,-441,VENMO CASHOUT ***********6235,Internal Transfers,,,,
+2026-03-02,2026-03-02,Cash,USAA CLASSIC CHECKING,5747,USAA,APPLE CASH BANK XFER John Caldwell,,-409,APPLE CASH BANK XFER John Caldwell,Uncategorized,,,,
+2026-03-02,2026-03-02,Cash,red card,5446,Bank of America,THE MARRIAGE GROUP,,199,PURCHASE 0302 THE MARRIAGE GROUP,Dining & Drinks,,,,
+2026-03-02,2026-03-02,Cash,red card,5446,Bank of America,Online Banking transfer to SAV 8293,,1900,Online Banking transfer to SAV 8293,Savings Transfer,,,,
+2026-03-02,2026-03-02,Cash,red card,5446,Bank of America,APPLE.COM/BILL,,13.98,PURCHASE 0301 APPLE.COM/BILL 866-712-7753 CA,Entertainment & Rec.,,,,
+2026-03-02,2026-03-02,Cash,red card,5446,Bank of America,F45 TRAINING,,110,PURCHASE 0301 F45 TRAINING WGE F45TRAINING.CCA,Health & Wellness,,,,
+2026-03-02,2026-03-02,Cash,red card,5446,Bank of America,Safeway,,23.76,MOBILE PURCHASE 0228 SAFEWAY #1110 SALINAS CA,Groceries,,,,
+2026-03-02,2026-03-02,Cash,red card,5446,Bank of America,Starbucks,,4.9,MOBILE PURCHASE 0228 STARBUCKS STORE 13401 SALINAS CA,Dining & Drinks,,,,
+2026-03-02,2026-03-02,Cash,red card,5446,Bank of America,AMAZON DIGITAL,,11.99,PURCHASE 0228 AMAZON DIGI* 9B8GE42P3,Shopping,,,,
+2026-03-02,2026-03-02,Cash,red card,5446,Bank of America,GRAND GAS,,40.07,MOBILE PURCHASE 0228 GRAND GAS CURTNER SAN JOSE CA,Auto & Transport,,,,
+2026-03-02,2026-03-02,Cash,red card,5446,Bank of America,APPLE CASH SENT,,15,PMNT SENT 0228 APPLE CASH SENT MONEY,Uncategorized,,,,
+2026-03-02,2026-03-02,Cash,red card,5446,Bank of America,SALINAS GIRLS FASTPIT,,15.6,MOBILE PURCHASE 0227 SQ *SALINAS GIRLS FASTP Salinas CA,Entertainment & Rec.,,,,
+2026-03-02,2026-03-02,Cash,red card,5446,Bank of America,NOAH'S BAGELS,,18.92,MOBILE PURCHASE 0227 NOAH'S BAGELS #2159 SAN JOSE CA,Dining & Drinks,,,,
+2026-03-02,2026-03-02,Cash,red card,5446,Bank of America,Safeway,,51.47,MOBILE PURCHASE 0227 SAFEWAY #1483 SAN JOSE CA,Groceries,,,,
+2026-03-02,2026-03-02,Cash,savings account,8293,Bank of America,Online Banking transfer from CHK 5446,,-1900,Online Banking transfer from CHK 5446,Savings Transfer,,,,
+2026-03-02,2026-03-02,Credit Card,blue card,1665,Bank of America,CKE*IKE'S PLACE SAN MATEO,,84.09,CKE*IKE'S PLACE SAN MATEOSAN MATEO CA,Dining & Drinks,,,,
+2026-03-03,2026-03-03,Cash,USAA CLASSIC CHECKING,5747,USAA,USAA P&C AUTOPAY,,11.33,USAA P&C AUTOPAY ***********5161,Credit Card Payment,,,,
+2026-03-03,2026-03-03,Cash,USAA CLASSIC CHECKING,5747,USAA,SPO*JAKESOFWILLOWGLEN,,62.82,SPO*JAKESOFWILLOWGLEN SAN JOSE CA,Dining & Drinks,,,,
+2026-03-03,2026-03-03,Cash,USAA CLASSIC CHECKING,5747,USAA,Uber,,21.96,UBER *TRIP San FranciscoCA,Auto & Transport,,,,
+2026-03-03,2026-03-03,Cash,red card,5446,Bank of America,Target,,69.42,TARGET T-0324 03/02 MOBILE PURCHASE TARGET T-0324 San Jose CA,Shopping,,,,
+2026-03-03,2026-03-03,Cash,red card,5446,Bank of America,APPLE CASH SENT,,550,PMNT SENT 0302 APPLE CASH SENT MONEY,Uncategorized,,,,
+2026-03-03,2026-03-03,Credit Card,blue card,1665,Bank of America,AMAZON MKTPL,,32.8,AMAZON MKTPL*B97VI0DO0 Amzn.com/billWA,Shopping,,,,
+2026-03-04,2026-03-04,Cash,red card,5446,Bank of America,Safeway,,19.79,MOBILE PURCHASE 0302 SAFEWAY #1483 SAN JOSE CA,Groceries,,,,
+2026-03-04,2026-03-04,Credit Card,blue card,1665,Bank of America,ACT*58475 YRrenew-AADV,,99.95,ACT*58475 YRrenew-AADV 800-6634991 TX,Bills & Utilities,,,,
+2026-03-05,2026-03-05,Cash,USAA CLASSIC CHECKING,5747,USAA,THEFARMERSDOG.COM,,164.35,THEFARMERSDOG.COM THEFARMERSDOGNY,Bills & Utilities,,,,
+2026-03-05,2026-03-05,Cash,USAA CLASSIC CHECKING,5747,USAA,F45 TRAINING,,120,F45 TRAINING WGE F45TRAINING.CCA,Health & Wellness,,,,
+2026-03-05,2026-03-05,Cash,USAA CLASSIC CHECKING,5747,USAA,Taco Bell,,6.77,TACO BELL 30786 SAN JOSE CA,Dining & Drinks,,,,
+2026-03-05,2026-03-05,Credit Card,American Express Card,2268,USAA,AUTOMATIC PAYMENT,,-500,AUTOMATIC PAYMENT - THANK YOU,Credit Card Payment,,,,
+2026-03-05,2026-03-05,Cash,red card,5446,Bank of America,7-Eleven,,10.01,7-ELEVEN 03/05 MOBILE PURCHASE 7-ELEVEN San Jose CA,Shopping,,,,
+2026-03-05,2026-03-05,Cash,red card,5446,Bank of America,Netflix,,17.99,CHECKCARD 0305 NETFLIX.COM LOS GATOS CA,Entertainment & Rec.,,,,
+2026-03-05,2026-03-05,Cash,red card,5446,Bank of America,MISS TO MRS WEDDING GIF,,54.66,PURCHASE 0304 MISS TO MRS WEDDING GIF,Shopping,,,,
+2026-03-05,2026-03-05,Cash,red card,5446,Bank of America,Safeway,,15.53,MOBILE PURCHASE 0303 SAFEWAY #1483 SAN JOSE CA,Groceries,,,,
+2026-03-06,2026-03-06,Cash,USAA CLASSIC CHECKING,5747,USAA,USAA CREDIT CARD PAYMENT,,500,USAA CREDIT CARD PAYMENT ***********1425,Credit Card Payment,,,,
+2026-03-06,2026-03-06,Cash,USAA CLASSIC CHECKING,5747,USAA,PURPLE ONION CAFE,,21.3,SQ *PURPLE ONION CAFE Los Gatos CA,Dining & Drinks,,,,
+2026-03-06,2026-03-06,Cash,USAA CLASSIC CHECKING,5747,USAA,PURPLE ONION CAFE,,8.1,SQ *PURPLE ONION CAFE Los Gatos CA,Dining & Drinks,,,,
+2026-03-06,2026-03-06,Cash,USAA CLASSIC CHECKING,5747,USAA,Peet's Coffee & Tea,,7.76,PEET'S #02302 SAN JOSE CA,Dining & Drinks,,,,
+2026-03-06,2026-03-06,Cash,red card,5446,Bank of America,7-Eleven,,3.27,7-ELEVEN 03/06 MOBILE PURCHASE 7-ELEVEN San Jose CA,Shopping,,,,
+2026-03-06,2026-03-06,Cash,red card,5446,Bank of America,Chipotle Mexican Grill,,2.41,MOBILE PURCHASE 0305 CHIPOTLE 1241 SARATOGA CA,Dining & Drinks,,,,
+2026-03-06,2026-03-06,Cash,red card,5446,Bank of America,NOAH'S BAGELS,,5.48,MOBILE PURCHASE 0305 NOAH'S BAGELS #2159 SAN JOSE CA,Dining & Drinks,,,,
+2026-03-07,2026-03-07,Credit Card,blue card,1665,Bank of America,PAYMENT FROM SAV 8293,,-1155.89,PAYMENT FROM SAV 8293,Credit Card Payment,,,,
+2026-03-07,2026-03-07,Credit Card,blue card,1665,Bank of America,Amazon.com,,13.04,Amazon.com*BE7TE9UC1 Amzn.com/billWA,Shopping,,,,
+2026-03-09,2026-03-09,Cash,USAA CLASSIC CHECKING,5747,USAA,SOUTHWEST AIRLINES,,592.23,SOUTHWES 52674155906 SOUTHWEST.COMTX,Bills & Utilities,,,,
+2026-03-09,2026-03-09,Cash,USAA CLASSIC CHECKING,5747,USAA,AMK SAP CTR RETAIL,,92.96,AMK SAP CTR RETAIL TE SAN JOSE CA,Shopping,,,,
+2026-03-09,2026-03-09,Cash,USAA CLASSIC CHECKING,5747,USAA,TST*CRAVING PIZZA,,37.12,TST*CRAVING PIZZA 408-622-8410 CA,Dining & Drinks,,,,
+2026-03-09,2026-03-09,Cash,USAA CLASSIC CHECKING,5747,USAA,ZG * RENTAPPLICATION,,35,ZG * RENTAPPLICATION 206-516-2265 WA,Home & Garden,,,,
+2026-03-09,2026-03-09,Cash,USAA CLASSIC CHECKING,5747,USAA,ZANOTTOS WILLOW GLEN,,33.29,ZANOTTOS WILLOW GLEN SAN JOSE CA,Groceries,,,,
+2026-03-09,2026-03-09,Cash,USAA CLASSIC CHECKING,5747,USAA,ARMK SAP CENTER CLUB,,24.21,ARMK SAP CENTER CLUB SAN JOSE CA,Entertainment & Rec.,,,,
+2026-03-09,2026-03-09,Cash,USAA CLASSIC CHECKING,5747,USAA,TST* NATION'S GIANT BURGER,,20.76,TST* NATION'S GIANT BUR SAN JOSE CA,Dining & Drinks,,,,
+2026-03-09,2026-03-09,Cash,USAA CLASSIC CHECKING,5747,USAA,SJ MERCURY NEWS,,14.9,SJ MERCURY NEWS CIRC SAN JOSE CA,Entertainment & Rec.,,,,
+2026-03-09,2026-03-09,Cash,USAA CLASSIC CHECKING,5747,USAA,ARMK SAP CENTER CLUB,,10.01,ARMK SAP CENTER CLUB SAN JOSE CA,Entertainment & Rec.,,,,
+2026-03-09,2026-03-09,Cash,USAA CLASSIC CHECKING,5747,USAA,AGENT FEE,,5,AGENT FEE 89009278896 BTMC CA,Shopping,,,,
+2026-03-09,2026-03-09,Credit Card,CREDIT CARD,0680,Chase,AUTOMATIC PAYMENT,,-400,AUTOMATIC PAYMENT - THANK,Credit Card Payment,,,,
+2026-03-09,2026-03-09,Cash,red card,5446,Bank of America,Uber,,35.98,PURCHASE 0308 UBER *TRIP H San FranciscoCA,Auto & Transport,,,,
+2026-03-09,2026-03-09,Cash,red card,5446,Bank of America,AMK SAP CENTER CONCESSIONS,,28.99,PURCHASE 0307 AMK SAP CENTER CONCESSI CA,Dining & Drinks,,,,
+2026-03-09,2026-03-09,Cash,red card,5446,Bank of America,APPLE CASH BALANCE ADD,,35,PMNT SENT 0308 APPLE CASH BALANCE ADD,Uncategorized,,,,
+2026-03-09,2026-03-09,Cash,red card,5446,Bank of America,FC* SLIDESGO,,5.99,PURCHASE 0307 FC* SLIDESGO UNIVERSAL MALAGA,Entertainment & Rec.,,,,
+2026-03-09,2026-03-09,Cash,savings account,8293,Bank of America,MOHELA Student Loan,,1360.05,MOHELA DES:QDR ID INDN:LOZANO LAUREN,Loan Payment,,,,
+2026-03-09,2026-03-09,Cash,savings account,8293,Bank of America,Mobile Banking payment to CRD 1665,,1155.89,Mobile Banking payment to CRD 1665,Credit Card Payment,,,,
+2026-03-09,2026-03-09,Credit Card,blue card,1665,Bank of America,Subway,,13.15,SUBWAY 69003 SAN JOSE CA,Dining & Drinks,,,,
+2026-03-09,2026-03-09,Credit Card,blue card,1665,Bank of America,Amazon.com,,31.38,Amazon.com*BP40H8UB2 Amzn.com/billWA,Shopping,,,,
+2026-03-09,2026-03-09,Credit Card,blue card,1665,Bank of America,ARMK SAP CENTER CLUB,,24.92,ARMK SAP CENTER CLUB SAN JOSE CA,Entertainment & Rec.,,,,
+2026-03-09,2026-03-09,Credit Card,blue card,1665,Bank of America,Safeway,,27.77,SAFEWAY #1483 SAN JOSE CA,Groceries,,,,
+2026-03-09,2026-03-09,Credit Card,blue card,1665,Bank of America,TST*ANCHORS FISH & CHIPS,,38.29,TST*ANCHORS FISH & CHIPS San Jose CA,Dining & Drinks,,,,
+2026-03-09,2026-03-09,Other,1,,Laurel Road - MOHELA,N/A KeyBank Refi,,-1360.05,N/A KeyBank Refi,Internal Transfers,,,,
+2026-03-10,2026-03-10,Cash,USAA CLASSIC CHECKING,5747,USAA,CHASE CREDIT CRD AUTOPAY,,400,CHASE CREDIT CRD AUTOPAY,Bills & Utilities,,,,
+2026-03-10,2026-03-10,Cash,USAA CLASSIC CHECKING,5747,USAA,BOARD BREW,,21.37,BOARD BREW CYPRESS CA,Dining & Drinks,,,,
+2026-03-10,2026-03-10,Cash,USAA CLASSIC CHECKING,5747,USAA,Smashburger,,14.66,SMASHBURGER TERM B SJC SAN JOSE CA,Dining & Drinks,,,,
+2026-03-10,2026-03-10,Cash,USAA CLASSIC CHECKING,5747,USAA,HUDSON ST1490,,3.99,HUDSON ST1490 SAN JOSE CA,Shopping,,,,
+2026-03-10,2026-03-10,Cash,USAA CLASSIC CHECKING,5747,USAA,MILLENNIUM SPACE PAYROLL,,-9650.79,MILLENNIUM SPACE PAYROLL ***********6805,Income,,,,
+2026-03-10,2026-03-10,Cash,red card,5446,Bank of America,PIZZA MY HEART,,30.47,CHECKCARD 0309 PIZZA MY HEART SAN JOSE CA,Dining & Drinks,,,,
+2026-03-10,2026-03-10,Cash,red card,5446,Bank of America,THE ROMAN CATHOLIC PAYROLL,,-3298.88,THE ROMAN CATHOL DES:PAYROLL INDN:LAUREN LOZANO,Income,,,,
+2026-03-11,2026-03-11,Cash,USAA CLASSIC CHECKING,5747,USAA,EREWHON MANHATTAN BEACH,,55.13,EREWHON MANHATTAN BEACH MANHATTAN BE CA,Groceries,,,,
+2026-03-11,2026-03-11,Cash,USAA CLASSIC CHECKING,5747,USAA,F45 TRAINING,,15,F45 TRAINING WGE F45TRAINING.CCA,Health & Wellness,,,,
+2026-03-11,2026-03-11,Cash,USAA CLASSIC CHECKING,5747,USAA,YOCHILLFROYO,,11.72,YOCHILLFROYO LOS ANGELES CA,Dining & Drinks,,,,
+2026-03-11,2026-03-11,Cash,USAA CLASSIC CHECKING,5747,USAA,MARKET@WORK,,11.11,MARKET@WORK RENTON WA,Dining & Drinks,,,,
+2026-03-11,2026-03-11,Cash,USAA CLASSIC CHECKING,5747,USAA,EREWHON,,8.5,EREWHON CA,Groceries,,,,
+2026-03-11,2026-03-11,Cash,USAA CLASSIC CHECKING,5747,USAA,MARKET@WORK,,4.35,MARKET@WORK RENTON WA,Dining & Drinks,,,,
+2026-03-11,2026-03-11,Credit Card,American Express Card,2268,USAA,Interest on Purchases,,46.28,Interest on Purchases,Fees,,,,
+2026-03-11,2026-03-11,Cash,red card,5446,Bank of America,WILLOW GLEN GAS,,60.98,MOBILE PURCHASE WILLOW GLEN GAS SAN JOSE CA,Auto & Transport,,,,
+2026-03-11,2026-03-11,Credit Card,blue card,1665,Bank of America,Kindle Svcs,,3.99,Kindle Svcs*BP1OB9X01 888-802-3080 WA,Entertainment & Rec.,,,,
+2026-03-12,2026-03-12,Credit Card,CREDIT CARD,0680,Chase,PURCHASE INTEREST CHARGE,,45.51,PURCHASE INTEREST CHARGE,Fees,,,,
+2026-03-12,2026-03-12,Cash,USAA CLASSIC CHECKING,5747,USAA,ALOFT EL SEGUNDO LAX,,462.56,ALOFT EL SEGUNDO LAX EL SEGUNDO CA,Bills & Utilities,,,,
+2026-03-12,2026-03-12,Cash,USAA CLASSIC CHECKING,5747,USAA,UBER,,36.94,UBER * PENDING uber.com CA,Auto & Transport,,,,
+2026-03-12,2026-03-12,Cash,USAA CLASSIC CHECKING,5747,USAA,Amazon Prime,,16.45,AMAZON PRIME Amzn.com/billWA,Shopping,,,,
+2026-03-12,2026-03-12,Cash,USAA CLASSIC CHECKING,5747,USAA,TST* TACOMASA,,15.51,TST* TACOMASA - EL SEGU EL SEGUNDO CA,Dining & Drinks,,,,
+2026-03-12,2026-03-12,Cash,USAA CLASSIC CHECKING,5747,USAA,NAYAX EV VEHICLE CHARGE,,15.42,NAYAX EV VEHICLE CHARGE HUNT VALLEY MD,Bills & Utilities,,,,
+2026-03-12,2026-03-12,Cash,USAA CLASSIC CHECKING,5747,USAA,Starbucks,,6.95,STARBUCKS STORE 09289 HUNTINGTON BECA,Dining & Drinks,,,,
+2026-03-12,2026-03-12,Credit Card,American Express Card,2268,USAA,Budget Car Rental,,200.61,BUDGET RENT A CAR LOS ANGELES CA,Bills & Utilities,,,,
+2026-03-12,2026-03-12,Cash,red card,5446,Bank of America,Mobile Banking payment to CRD 1665,,152.54,Mobile Banking payment to CRD 1665,Credit Card Payment,,,,
+2026-03-12,2026-03-12,Cash,red card,5446,Bank of America,F45 TRAINING,,15,PURCHASE 0311 F45 TRAINING WGE F45TRAINING.CCA,Health & Wellness,,,,
+2026-03-12,2026-03-12,Cash,red card,5446,Bank of America,Safeway,,9.47,MOBILE PURCHASE 0310 SAFEWAY #1483 SAN JOSE CA,Groceries,,,,
+2026-03-13,2026-03-13,Cash,USAA CLASSIC CHECKING,5747,USAA,LAX SKY CALI PIZZA KITCHEN,,28.54,LAX SKY CALI PIZZA KITC LOS ANGELES CA,Dining & Drinks,,,,
+2026-03-13,2026-03-13,Cash,USAA CLASSIC CHECKING,5747,USAA,GREAT GAS MERIDIAN,,5.53,GREAT GAS MERIDIAN SAN JOSE CA,Auto & Transport,,,,
+2026-03-13,2026-03-13,Cash,red card,5446,Bank of America,Online Banking transfer to SAV 8293,,2100,Online Banking transfer to SAV 8293,Savings Transfer,,,,
+2026-03-13,2026-03-13,Cash,red card,5446,Bank of America,AMAZON DIGITAL,,13.99,PURCHASE 0313 AMAZON DIGITAL,Entertainment & Rec.,,,,
+2026-03-13,2026-03-13,Cash,savings account,8293,Bank of America,Online Banking transfer from CHK 5446,,-2100,Online Banking transfer from CHK 5446,Savings Transfer,,,,
+2026-03-13,2026-03-13,Credit Card,blue card,1665,Bank of America,PAYMENT FROM CHK 5446,,-152.54,PAYMENT FROM CHK 5446,Credit Card Payment,,,,
+2026-03-16,2026-03-16,Cash,USAA CLASSIC CHECKING,5747,USAA,DEPT EDUCATION STUDENT LN,,358.8,DEPT EDUCATION STUDENT LN,Loan Payment,,,,
+2026-03-16,2026-03-16,Cash,USAA CLASSIC CHECKING,5747,USAA,Costco,,71.27,COSTCO WHSE #0470 SAN JOSE CA,Shopping,,,,
+2026-03-16,2026-03-16,Cash,USAA CLASSIC CHECKING,5747,USAA,ZANOTTOS WILLOW GLEN,,63.76,ZANOTTOS WILLOW GLEN SAN JOSE CA,Groceries,,,,
+2026-03-16,2026-03-16,Cash,USAA CLASSIC CHECKING,5747,USAA,Target,,38.71,TARGET T-1054 San Bruno CA,Shopping,,,,
+2026-03-16,2026-03-16,Cash,USAA CLASSIC CHECKING,5747,USAA,BOUDIN SF,,20.01,BOUDIN SF ALMADEN PLA SAN JOSE CA,Dining & Drinks,,,,
+2026-03-16,2026-03-16,Cash,USAA CLASSIC CHECKING,5747,USAA,Roku Disney,,18.99,Roku for Disney Electro DE,Entertainment & Rec.,,,,
+2026-03-16,2026-03-16,Cash,USAA CLASSIC CHECKING,5747,USAA,Roku ESPN,,12.99,Roku for ESPN DE,Entertainment & Rec.,,,,
+2026-03-16,2026-03-16,Cash,USAA CLASSIC CHECKING,5747,USAA,Prime Video Channels,,5.99,Prime Video Channels amzn.com/billWA,Entertainment & Rec.,,,,
+2026-03-16,2026-03-16,Cash,USAA CLASSIC CHECKING,5747,USAA,MICROSOFT 365,,1.99,MICROSOFT*MICROSOFT 36 REDMOND WA,Software & Tech,,,,
+2026-03-16,2026-03-16,Cash,USAA CLASSIC CHECKING,5747,USAA,Zelle: Roberta Caldwell,,-1000,Zelle: Roberta Caldwell,Internal Transfers,,,,
+2026-03-16,2026-03-16,Cash,red card,5446,Bank of America,DEPT EDUCATION STUDENT LN,,214.58,DEPT EDUCATION DES:STUDENT LN INDN:LOZANO,Loan Payment,,,,
+2026-03-16,2026-03-16,Cash,red card,5446,Bank of America,7-Eleven,,10.01,7-ELEVEN 03/16 MOBILE PURCHASE 7-ELEVEN San Jose CA,Shopping,,,,
+2026-03-16,2026-03-16,Cash,red card,5446,Bank of America,APPLE.COM/BILL,,9.99,PURCHASE 0315 APPLE.COM/BILL 866-712-7753 CA,Entertainment & Rec.,,,,
+2026-03-16,2026-03-16,Cash,red card,5446,Bank of America,F45 TRAINING,,110,PURCHASE 0315 F45 TRAINING WGE F45TRAINING.CCA,Health & Wellness,,,,
+2026-03-16,2026-03-16,Cash,red card,5446,Bank of America,McDonald's,,14.86,MOBILE PURCHASE 0314 MCDONALD'S F14679 SAN JOSE CA,Dining & Drinks,,,,
+2026-03-16,2026-03-16,Cash,red card,5446,Bank of America,Safeway,,47.28,MOBILE PURCHASE 0314 SAFEWAY #1483 SAN JOSE CA,Groceries,,,,
+2026-03-16,2026-03-16,Cash,red card,5446,Bank of America,Amazon Prime,,8.19,PURCHASE 0314 AMAZON PRIME Amzn.com/billWA,Shopping,,,,
+2026-03-16,2026-03-16,Cash,red card,5446,Bank of America,Target,,17.12,TARGET T-1054 03/13 MOBILE PURCHASE TARGET T-1054 San Bruno CA,Shopping,,,,
+2026-03-16,2026-03-16,Cash,red card,5446,Bank of America,NOAH'S BAGELS,,5.48,MOBILE PURCHASE 0313 NOAH'S BAGELS #2159 SAN JOSE CA,Dining & Drinks,,,,
+2026-03-16,2026-03-16,Cash,red card,5446,Bank of America,APPLE CASH SENT,,539.94,PMNT SENT 0313 APPLE CASH SENT MONEY,Uncategorized,,,,
+2026-03-16,2026-03-16,Cash,red card,5446,Bank of America,Shell,,10.22,MOBILE PURCHASE 0312 SHELL OIL SAN JOSE CA,Auto & Transport,,,,
+2026-03-16,2026-03-16,Credit Card,blue card,1665,Bank of America,AMAZON MKTPL,,37.15,AMAZON MKTPL*B55360N22 Amzn.com/billWA,Shopping,,,,
+2026-03-16,2026-03-16,Credit Card,blue card,1665,Bank of America,HOTEL FIONA,,212.21,HOTEL FIONA SAN FRANCISCOCA,Travel & Vacation,,,,
+2026-03-16,2026-03-16,Credit Card,blue card,1665,Bank of America,HONE PIERCING,,227.7,SQ *HONE PIERCING San Jose CA,Personal Care,,,,
+2026-03-16,2026-03-16,Credit Card,blue card,1665,Bank of America,MONARCH,,33.76,MONARCH SAN FRANCISCOCA,Software & Tech,,,,
+2026-03-16,2026-03-16,Credit Card,blue card,1665,Bank of America,MONARCH,,54,MONARCH SAN FRANCISCOCA,Software & Tech,,,,
+2026-03-16,2026-03-16,Credit Card,blue card,1665,Bank of America,Target,,45.9,TARGET 00003244 SAN JOSE CA,Shopping,,,,
+2026-03-16,2026-03-16,Credit Card,blue card,1665,Bank of America,ARLO MERCH,,43.2,SQ *ARLO MERCH Beverly HillsCA,Home & Garden,,,,
+2026-03-17,2026-03-17,Cash,USAA CLASSIC CHECKING,5747,USAA,Planet Fitness,,10,PLANET FITNESS P IClub Fees,Health & Wellness,,,,
+2026-03-17,2026-03-17,Cash,USAA CLASSIC CHECKING,5747,USAA,The Roku Channel,,22.98,The Roku Channel DE,Entertainment & Rec.,,,,
+2026-03-17,2026-03-17,Cash,red card,5446,Bank of America,Planet Fitness,,10,PLANET FITNESS P DES:IClub Fees INDN:LAUREN LOZANO,Health & Wellness,,,,
+2026-03-17,2026-03-17,Cash,red card,5446,Bank of America,MICROSOFT XBOX,,9.99,CHECKCARD 0317 MICROSOFT*XBOX REDMOND WA,Entertainment & Rec.,,,,
+2026-03-17,2026-03-17,Cash,red card,5446,Bank of America,Spotify,,12.99,PURCHASE 0317 Spotify New York NY,Entertainment & Rec.,,,,
+2026-03-17,2026-03-17,Credit Card,blue card,1665,Bank of America,AMAZON MKTPL,,10.92,AMAZON MKTPL*BD4X343Z1 Amzn.com/billWA,Shopping,,,,
+2026-03-18,2026-03-18,Cash,USAA CLASSIC CHECKING,5747,USAA,SP EILISH FRAGRANCES,,91.65,SP EILISH FRAGRANCES BILLIEEILISHFNY,Personal Care,,,,
+2026-03-18,2026-03-18,Cash,USAA CLASSIC CHECKING,5747,USAA,Chevron,,56.29,CHEVRON 0096139 SAN JOSE CA,Auto & Transport,,,,
+2026-03-18,2026-03-18,Cash,USAA CLASSIC CHECKING,5747,USAA,Safeway,,17.07,SAFEWAY #1483 SAN JOSE CA,Groceries,,,,
+2026-03-18,2026-03-18,Cash,USAA CLASSIC CHECKING,5747,USAA,LA SUPERIOR TAQUERIA,,15.3,LA SUPERIOR TAQUERIA SAN JOSE CA,Dining & Drinks,,,,
+2026-03-18,2026-03-18,Cash,USAA CLASSIC CHECKING,5747,USAA,LA SUPERIOR PALETERIA,,11.93,LA SUPERIOR PALETERIA SAN JOSE CA,Dining & Drinks,,,,
+2026-03-18,2026-03-18,Cash,USAA CLASSIC CHECKING,5747,USAA,Zelle: Roberta Caldwell,,-1000,Zelle: Roberta Caldwell,Internal Transfers,,,,
+2026-03-18,2026-03-18,Cash,red card,5446,Bank of America,HLU*HULUPLUS,,11.99,PURCHASE 0317 HLU*HULUPLUS hulu.com/billCA,Entertainment & Rec.,,,,
+2026-03-18,2026-03-18,Cash,red card,5446,Bank of America,TOGO'S,,21.06,MOBILE PURCHASE 0317 TOGO S - San Jose SARATOGA CA,Dining & Drinks,,,,
+2026-03-18,2026-03-18,Cash,red card,5446,Bank of America,Safeway,,30.96,MOBILE PURCHASE 0316 SAFEWAY #1483 SAN JOSE CA,Groceries,,,,
+2026-03-18,2026-03-18,Cash,red card,5446,Bank of America,Online Banking transfer from SAV 8293,,-150,Online Banking transfer from SAV 8293,Savings Transfer,,,,
+2026-03-18,2026-03-18,Cash,savings account,8293,Bank of America,Online Banking transfer to CHK 5446,,150,Online Banking transfer to CHK 5446,Savings Transfer,,,,
+2026-03-18,2026-03-18,Credit Card,blue card,1665,Bank of America,TEACHERSPAYTEACHERS.COM,,1.5,TEACHERSPAYTEACHERS.COM CA,Education,,,,
+2026-03-19,2026-03-19,Cash,USAA CLASSIC CHECKING,5747,USAA,USAA CREDIT CARD PAYMENT,,250,USAA CREDIT CARD PAYMENT,Bills & Utilities,,,,
+2026-03-19,2026-03-19,Cash,USAA CLASSIC CHECKING,5747,USAA,THEFARMERSDOG.COM,,164.35,THEFARMERSDOG.COM THEFARMERSDOGNY,Bills & Utilities,,,,
+2026-03-19,2026-03-19,Cash,USAA CLASSIC CHECKING,5747,USAA,F45 TRAINING,,120,F45 TRAINING WGE F45TRAINING.CCA,Health & Wellness,,,,
+2026-03-19,2026-03-19,Cash,USAA CLASSIC CHECKING,5747,USAA,IN-N-OUT SAN JOSE,,24.17,IN-N-OUT SAN JOSE SAN JOSE CA,Dining & Drinks,,,,
+2026-03-19,2026-03-19,Cash,USAA CLASSIC CHECKING,5747,USAA,Zelle: Roberta Caldwell,,-500,Zelle: Roberta Caldwell,Internal Transfers,,,,
+2026-03-19,2026-03-19,Credit Card,American Express Card,2268,USAA,USAA CREDIT CARD PAYMENT,,-250,USAA CREDIT CARD PAYMENT SAN ANTONIO TX,Credit Card Payment,,,,
+2026-03-19,2026-03-19,Cash,red card,5446,Bank of America,7-Eleven,,10.01,7-ELEVEN 03/19 MOBILE PURCHASE 7-ELEVEN San Jose CA,Shopping,,,,
+2026-03-19,2026-03-19,Cash,red card,5446,Bank of America,CANVA,,12.99,PURCHASE 0318 CANVA* CANVA.COM TX,Entertainment & Rec.,,,,
+2026-03-19,2026-03-19,Cash,red card,5446,Bank of America,APPLE.COM/BILL,,1.99,PURCHASE 0318 APPLE.COM/BILL 866-712-7753 CA,Entertainment & Rec.,,,,
+2026-03-19,2026-03-19,Credit Card,blue card,1665,Bank of America,NFHSNETWORK,,13.99,NFHSNETWOR* 33CDFA3EDE NFHSNETWORK.CGA,Entertainment & Rec.,,,,
+2026-03-19,2026-03-19,Credit Card,blue card,1665,Bank of America,Audible,,14.95,Audible*956Q32853 Amzn.com/billNJ,Entertainment & Rec.,,,,
+2026-03-20,2026-03-20,Cash,USAA CLASSIC CHECKING,5747,USAA,Jamba Juice,,27.02,TST* JAMBA JUICE - 0409 SAN JOSE CA,Dining & Drinks,,,,
+2026-03-20,2026-03-20,Cash,red card,5446,Bank of America,7-Eleven,,3.27,7-ELEVEN 03/20 MOBILE PURCHASE 7-ELEVEN San Jose CA,Shopping,,,,
+2026-03-20,2026-03-20,Cash,red card,5446,Bank of America,Peacock Premium,,10.99,PURCHASE 0320 Peacock AEFAF Premium NY,Entertainment & Rec.,,,,
+2026-03-20,2026-03-20,Cash,red card,5446,Bank of America,Safeway,,54.86,MOBILE PURCHASE 0318 SAFEWAY #1483 SAN JOSE CA,Groceries,,,,
+2026-03-23,2026-03-23,Cash,USAA CLASSIC CHECKING,5747,USAA,Costco,,54.49,COSTCO WHSE #0470 SAN JOSE CA,Shopping,,,,
+2026-03-23,2026-03-23,Cash,USAA CLASSIC CHECKING,5747,USAA,SP THE SPACE STORE,,34.51,SP THE SPACE STORE THESPACESTORETX,Home & Garden,,,,
+2026-03-23,2026-03-23,Cash,USAA CLASSIC CHECKING,5747,USAA,LUCKY #757,,30.31,LUCKY #757 SAN JOSE CA,Groceries,,,,
+2026-03-23,2026-03-23,Cash,USAA CLASSIC CHECKING,5747,USAA,Jamba Juice,,27.02,TST* JAMBA JUICE - 0409 SAN JOSE CA,Dining & Drinks,,,,
+2026-03-23,2026-03-23,Cash,USAA CLASSIC CHECKING,5747,USAA,Little Caesar's,,24.03,LITTLE CAESAR'S 3316-0004 SAN JOSE CA,Dining & Drinks,,,,
+2026-03-23,2026-03-23,Cash,USAA CLASSIC CHECKING,5747,USAA,TAIWAN RESTAURANT,,21,TAIWAN RESTAURANT SAN JOSE CA,Dining & Drinks,,,,
+2026-03-23,2026-03-23,Cash,USAA CLASSIC CHECKING,5747,USAA,Chipotle Mexican Grill,,17.77,CHIPOTLE 1107 SAN JOSE CA,Dining & Drinks,,,,
+2026-03-23,2026-03-23,Cash,USAA CLASSIC CHECKING,5747,USAA,CVS,,3.32,CVS/PHARMACY #09559 SAN JOSE CA,Shopping,,,,
+2026-03-23,2026-03-23,Cash,USAA CLASSIC CHECKING,5747,USAA,DEPOSIT@MOBILE,,-2500,DEPOSIT@MOBILE,Income,,,,
+2026-03-23,2026-03-23,Cash,red card,5446,Bank of America,Costco,,13.79,COSTCO WHSE #0470 SAN JOSE CA,Shopping,,,,
+2026-03-23,2026-03-23,Cash,red card,5446,Bank of America,Venmo,,-77.62,VENMO*Lozano Laur New York City NY,Internal Transfers,,,,
+2026-03-23,2026-03-23,Credit Card,blue card,1665,Bank of America,7-Eleven,,19.29,7-ELEVEN 25480 SAN JOSE CA,Shopping,,,,
+2026-03-23,2026-03-23,Credit Card,blue card,1665,Bank of America,NOAH'S BAGELS,,5.48,NOAH'S BAGELS #2159 SAN JOSE CA,Dining & Drinks,,,,
+2026-03-23,2026-03-23,Credit Card,blue card,1665,Bank of America,SALINAS GIRLS FASTPITCH,,4.68,SQ *SALINAS GIRLS FASTPITSalinas CA,Dining & Drinks,,,,
+2026-03-24,2026-03-24,Cash,USAA CLASSIC CHECKING,5747,USAA,INTEREST PAID,,-0.17,INTEREST PAID,Income,,,,
+2026-03-24,2026-03-24,Cash,USAA CLASSIC CHECKING,5747,USAA,TKS ALMADEN RANCH,,20.63,SQ *TKS ALMADEN RANCH San Jose CA,Entertainment & Rec.,,,,
+2026-03-24,2026-03-24,Cash,USAA CLASSIC CHECKING,5747,USAA,Roku WarnerMedia,,10.99,Roku for WarnerMedia Gl DE,Entertainment & Rec.,,,,
+2026-03-24,2026-03-24,Cash,USAA CLASSIC CHECKING,5747,USAA,MILLENNIUM SPACE PAYROLL,,-3650.38,MILLENNIUM SPACE PAYROLL ***********6805,Income,,,,
+2026-03-24,2026-03-24,Cash,USAA CLASSIC CHECKING,5747,USAA,APPLE CASH BANK XFER John Caldwell,,-1050.18,APPLE CASH BANK XFER John Caldwell,Uncategorized,,,,
+2026-03-24,2026-03-24,Cash,red card,5446,Bank of America,Costco,,61.22,COSTCO WHSE #0470 SAN JOSE CA,Shopping,,,,
+2026-03-24,2026-03-24,Cash,red card,5446,Bank of America,AMAZON DIGITAL,,16.99,PURCHASE 0323 AMAZON DIGITAL,Entertainment & Rec.,,,,
+2026-03-24,2026-03-24,Credit Card,blue card,1665,Bank of America,Cinemark Theatres,,74.96,CINEMARK 477 ONLINE San Jose CA,Entertainment & Rec.,,,,
+2026-03-24,2026-03-24,Credit Card,blue card,1665,Bank of America,SHE SHE BOUTIQUE,,305.08,SHE SHE BOUTIQUE LOS GATOS CA,Shopping,,,,
+2026-03-25,2026-03-25,Cash,USAA CLASSIC CHECKING,5747,USAA,MENSWEARHOUSE.COM,,114.83,MENSWEARHOUSE.COM TX,Shopping,,,,
+2026-03-25,2026-03-25,Cash,USAA CLASSIC CHECKING,5747,USAA,ZANOTTOS WILLOW GLEN,,41.14,ZANOTTOS WILLOW GLEN SAN JOSE CA,Groceries,,,,
+2026-03-25,2026-03-25,Cash,savings account,8293,Bank of America,Interest Earned,,-0.09,Interest Earned,Income,,,,
+2026-03-25,2026-03-25,Credit Card,blue card,1665,Bank of America,BUFFALO WILD WINGS,,92.91,BUFFALO WILD WNGS 0334 SAN JOSE CA,Dining & Drinks,,,,
+2026-03-26,2026-03-26,Cash,red card,5446,Bank of America,7-Eleven,,10.01,7-ELEVEN 03/26 MOBILE PURCHASE 7-ELEVEN San Jose CA,Shopping,,,,
+2026-03-26,2026-03-26,Cash,red card,5446,Bank of America,THE ROMAN CATHOLIC PAYROLL,,-3412.44,THE ROMAN CATHOL DES:PAYROLL INDN:LAUREN LOZANO,Income,,,,
+2026-03-26,2026-03-26,Credit Card,blue card,1665,Bank of America,Safeway,,16.79,SAFEWAY #1483 SAN JOSE CA,Groceries,,,,
+2026-03-26,2026-03-26,Credit Card,blue card,1665,Bank of America,AMAZON MKTPL,,98.32,AMAZON MKTPL*B52GB3VL1 Amzn.com/billWA,Shopping,,,,
+2026-03-27,2026-03-27,Cash,USAA CLASSIC CHECKING,5747,USAA,PetSmart,,177.91,PETSMART # 1695 SAN JOSE CA,Pets,,,,
+2026-03-27,2026-03-27,Cash,USAA CLASSIC CHECKING,5747,USAA,CHIKIN DRIP,,16.4,SQ *CHIKIN DRIP San Jose CA,Dining & Drinks,,,,
+2026-03-27,2026-03-27,Cash,USAA CLASSIC CHECKING,5747,USAA,Zelle: Helen Kelley,,-1000,Zelle: Helen Kelley,Internal Transfers,,,,
+2026-03-27,2026-03-27,Cash,red card,5446,Bank of America,Online Banking transfer to SAV 8293,,1000,Online Banking transfer to SAV 8293,Savings Transfer,,,,
+2026-03-27,2026-03-27,Cash,red card,5446,Bank of America,Mobile Banking payment to CRD 1665,,1312.79,Mobile Banking payment to CRD 1665,Credit Card Payment,,,,
+2026-03-27,2026-03-27,Cash,savings account,8293,Bank of America,Online Banking transfer from CHK 5446,,-1000,Online Banking transfer from CHK 5446,Savings Transfer,,,,
+2026-03-27,2026-03-27,Credit Card,blue card,1665,Bank of America,PAYMENT FROM CHK 5446,,-1312.79,PAYMENT FROM CHK 5446,Credit Card Payment,,,,
+2026-03-27,2026-03-27,Credit Card,blue card,1665,Bank of America,Jamba Juice,,25.87,TST* JAMBA JUICE - 0409 SAN JOSE CA,Dining & Drinks,,,,
+2026-03-30,2026-03-30,Cash,USAA CLASSIC CHECKING,5747,USAA,Rocket Money Premium,,6,Rocket Money Premium,Bills & Utilities,,,,
+2026-03-30,2026-03-30,Cash,USAA CLASSIC CHECKING,5747,USAA,Roku CBS,,89.99,Roku for CBS Interactiv DE,Entertainment & Rec.,,,,
+2026-03-30,2026-03-30,Cash,USAA CLASSIC CHECKING,5747,USAA,LA ROSCA MEAT MARKET,,13,LA ROSCA MEAT MARKET SJ BELL CA,Groceries,,,,
+2026-03-30,2026-03-30,Cash,red card,5446,Bank of America,7-Eleven,,10.01,7-ELEVEN 03/30 MOBILE PURCHASE 7-ELEVEN San Jose CA,Shopping,,,,
+2026-03-30,2026-03-30,Cash,red card,5446,Bank of America,GOODR SUNGLASSES,,70,PURCHASE 0329 SP GOODR SUNGLASSES GOODR.COM CA,Shopping,,,,
+2026-03-30,2026-03-30,Cash,red card,5446,Bank of America,APPLE.COM/BILL,,11.99,PURCHASE 0329 APPLE.COM/BILL 866-712-7753 CA,Entertainment & Rec.,,,,
+2026-03-30,2026-03-30,Cash,red card,5446,Bank of America,F45 TRAINING,,110,PURCHASE 0329 F45 TRAINING WGE F45TRAINING.CCA,Health & Wellness,,,,
+2026-03-30,2026-03-30,Cash,red card,5446,Bank of America,PTI*WINCHESTERHOUSE,,224.95,PURCHASE 0328 PTI*WINCHESTERHOUSE,Entertainment & Rec.,,,,
+2026-03-30,2026-03-30,Cash,red card,5446,Bank of America,AMAZON DIGITAL,,11.99,PURCHASE 0328 AMAZON DIGI* WWW.AMAZON.COWA,Shopping,,,,
+2026-03-30,2026-03-30,Cash,red card,5446,Bank of America,Cinemark Theatres,,30.27,MOBILE PURCHASE 0328 CINEMARK 477 RSTBAR San Jose CA,Entertainment & Rec.,,,,
+2026-03-30,2026-03-30,Cash,red card,5446,Bank of America,APPLE CASH SENT,,550,PMNT SENT 0328 APPLE CASH SENT MONEY,Uncategorized,,,,
+2026-03-30,2026-03-30,Cash,red card,5446,Bank of America,Five Guys,,47.98,MOBILE PURCHASE 0326 FIVE GUYS CA 1828 SAN JOSE CA,Dining & Drinks,,,,
+2026-03-31,2026-03-31,Cash,USAA CLASSIC CHECKING,5747,USAA,TIKTOK SHOP,,20.25,TIKTOK SHOP TIKTOK.COM CA,Shopping,,,,`;
+
+// Pre-load embedded March 2026 data as a fallback baseline
+monthData['2026-03'] = { label: 'March 2026', transactions: parseCSV(EMBEDDED_CSV) };
+activeKey = '2026-03';
+buildDashboard();
+updatePills();
+updatePeriodLabel();
+
+// Auto-load from server (overwrites embedded data if server is running)
+autoLoad();
+</script>
+</body>
+</html>

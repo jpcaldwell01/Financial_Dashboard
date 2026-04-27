@@ -1,0 +1,22 @@
+[
+  {
+    "name": "Chase Checking",
+    "type": "Checking",
+    "url": "https://app.rocketmoney.com/accounts/YOUR_ACCOUNT_ID"
+  },
+  {
+    "name": "Chase Savings",
+    "type": "Savings",
+    "url": "https://app.rocketmoney.com/accounts/YOUR_ACCOUNT_ID"
+  },
+  {
+    "name": "Chase Sapphire",
+    "type": "Credit Card",
+    "url": "https://app.rocketmoney.com/accounts/YOUR_ACCOUNT_ID"
+  },
+  {
+    "name": "Fidelity Brokerage",
+    "type": "Investment",
+    "url": "https://app.rocketmoney.com/accounts/YOUR_ACCOUNT_ID"
+  }
+]

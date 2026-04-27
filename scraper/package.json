@@ -1,0 +1,14 @@
+{
+  "name": "rocket-money-scraper",
+  "version": "1.0.0",
+  "description": "Scrapes account balances from Rocket Money and saves them locally.",
+  "main": "scraper.js",
+  "scripts": {
+    "setup": "npx playwright install chromium",
+    "scrape": "node scraper.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "playwright": "^1.43.0"
+  }
+}
