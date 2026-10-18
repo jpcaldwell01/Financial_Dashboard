@@ -178,6 +178,9 @@
   <button class="tab-btn" data-tab="spending" onclick="switchTab('spending')">
     💸 Spending
   </button>
+  <button class="tab-btn" data-tab="retirement" onclick="switchTab('retirement')">
+    🎯 Retirement
+  </button>
 </div>
 
 <!-- ═══════════════════ MONTH PILL BAR (spending only) ═══════════════════ -->
@@ -514,6 +517,345 @@
 </div><!-- end pane-budget -->
 
 
+<!-- ═══════════════════ PANE: RETIREMENT ═══════════════════ -->
+<div id="pane-retirement" style="display:none">
+  <div class="container" style="max-width:1400px">
+    <div style="display:flex;gap:24px;align-items:flex-start;flex-wrap:wrap">
+
+      <!-- ── Left: Input Panel ── -->
+      <div style="width:290px;flex-shrink:0;display:flex;flex-direction:column;gap:14px">
+
+        <!-- Goal -->
+        <div class="card" style="padding:18px">
+          <div class="section-label" style="margin:0 0 14px">Your Goal</div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:11px">
+            <label style="font-size:0.78rem;color:#94a3b8">Current age</label>
+            <input type="number" id="ret-current-age" class="budget-input" value="30" min="18" max="80" style="width:72px" oninput="updateRetirementChart()">
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:11px">
+            <label style="font-size:0.78rem;color:#94a3b8">Retire at age</label>
+            <input type="number" id="ret-retire-age" class="budget-input" value="65" min="30" max="90" style="width:72px" oninput="updateRetirementChart()">
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:11px">
+            <div>
+              <div style="font-size:0.78rem;color:#94a3b8">Annual spending</div>
+              <div style="font-size:0.68rem;color:#475569">in today's dollars</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:3px">
+              <span style="font-size:0.78rem;color:#64748b">$</span>
+              <input type="number" id="ret-annual-spend" class="budget-input" value="60000" min="0" style="width:100px" oninput="updateRetirementChart()">
+            </div>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div>
+              <div style="font-size:0.78rem;color:#94a3b8">Social Security</div>
+              <div style="font-size:0.68rem;color:#475569">monthly benefit</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:3px">
+              <span style="font-size:0.78rem;color:#64748b">$</span>
+              <input type="number" id="ret-ss-monthly" class="budget-input" value="0" min="0" style="width:100px" oninput="updateRetirementChart()">
+            </div>
+          </div>
+        </div>
+
+        <!-- Social Security Estimator -->
+        <div class="card" style="padding:14px 16px">
+          <div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;user-select:none" onclick="retToggleSS()">
+            <div class="section-label" style="margin:0;font-size:0.72rem">Social Security Estimator</div>
+            <span id="ret-ss-chevron" style="color:#475569;font-size:0.7rem">▼ show</span>
+          </div>
+          <div id="ret-ss-body" style="display:none;margin-top:12px">
+
+            <!-- ── You ── -->
+            <div style="font-size:0.72rem;font-weight:600;color:#64748b;letter-spacing:.04em;text-transform:uppercase;margin-bottom:8px">You</div>
+
+            <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px">
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <div>
+                  <div style="font-size:0.75rem;color:#94a3b8">Current annual salary</div>
+                  <div style="font-size:0.68rem;color:#475569">pre-tax W-2 income</div>
+                </div>
+                <div style="display:flex;align-items:center;gap:3px">
+                  <span style="font-size:0.72rem;color:#64748b">$</span>
+                  <input type="number" id="ret-ss-salary" class="budget-input" value="80000" min="0" step="1000" style="width:90px" oninput="updateSSCalc()">
+                </div>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <div>
+                  <div style="font-size:0.75rem;color:#94a3b8">Years worked so far</div>
+                  <div style="font-size:0.68rem;color:#475569">contributes to your 35-yr average</div>
+                </div>
+                <input type="number" id="ret-ss-yrs-worked" class="budget-input" value="5" min="0" max="35" step="1" style="width:60px;text-align:center" oninput="this._userEdited=true;updateSSCalc()">
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <div>
+                  <div style="font-size:0.75rem;color:#94a3b8">Lifetime earnings to date</div>
+                  <div style="font-size:0.68rem;color:#475569">optional — from <a href="https://www.ssa.gov/myaccount/" target="_blank" rel="noopener" style="color:#38bdf8;text-decoration:none">ssa.gov/myaccount</a></div>
+                </div>
+                <div style="display:flex;align-items:center;gap:3px">
+                  <span style="font-size:0.72rem;color:#64748b">$</span>
+                  <input type="number" id="ret-ss-lifetime" class="budget-input" value="" min="0" step="1000" placeholder="auto" style="width:90px" oninput="updateSSCalc()">
+                </div>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <div style="font-size:0.75rem;color:#94a3b8">Your claiming age</div>
+                <input type="number" id="ret-ss-my-claim" class="budget-input" value="67" min="62" max="70" step="1" style="width:60px;text-align:center" oninput="updateSSCalc()">
+              </div>
+            </div>
+
+            <!-- Your estimated PIA pill -->
+            <div style="background:#0f172a;border-radius:6px;padding:7px 10px;display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+              <div style="font-size:0.68rem;color:#475569">Your est. FRA benefit (PIA)</div>
+              <div id="ret-ss-my-pia" style="font-size:0.88rem;font-weight:700;color:#38bdf8">—</div>
+            </div>
+
+            <!-- ── Spouse ── -->
+            <div style="font-size:0.72rem;font-weight:600;color:#64748b;letter-spacing:.04em;text-transform:uppercase;margin-bottom:8px">Spouse</div>
+
+            <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px">
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <div>
+                  <div style="font-size:0.75rem;color:#94a3b8">Current annual salary</div>
+                  <div style="font-size:0.68rem;color:#475569">pre-tax W-2 income</div>
+                </div>
+                <div style="display:flex;align-items:center;gap:3px">
+                  <span style="font-size:0.72rem;color:#64748b">$</span>
+                  <input type="number" id="ret-ss-sp-salary" class="budget-input" value="70000" min="0" step="1000" style="width:90px" oninput="updateSSCalc()">
+                </div>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <div>
+                  <div style="font-size:0.75rem;color:#94a3b8">Years worked so far</div>
+                  <div style="font-size:0.68rem;color:#475569">contributes to their 35-yr average</div>
+                </div>
+                <input type="number" id="ret-ss-sp-yrs-worked" class="budget-input" value="5" min="0" max="35" step="1" style="width:60px;text-align:center" oninput="this._userEdited=true;updateSSCalc()">
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <div>
+                  <div style="font-size:0.75rem;color:#94a3b8">Lifetime earnings to date</div>
+                  <div style="font-size:0.68rem;color:#475569">optional — from <a href="https://www.ssa.gov/myaccount/" target="_blank" rel="noopener" style="color:#38bdf8;text-decoration:none">ssa.gov/myaccount</a></div>
+                </div>
+                <div style="display:flex;align-items:center;gap:3px">
+                  <span style="font-size:0.72rem;color:#64748b">$</span>
+                  <input type="number" id="ret-ss-sp-lifetime" class="budget-input" value="" min="0" step="1000" placeholder="auto" style="width:90px" oninput="updateSSCalc()">
+                </div>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <div style="font-size:0.75rem;color:#94a3b8">Spouse's claiming age</div>
+                <input type="number" id="ret-ss-sp-claim" class="budget-input" value="67" min="62" max="70" step="1" style="width:60px;text-align:center" oninput="updateSSCalc()">
+              </div>
+            </div>
+
+            <!-- Spouse estimated PIA pill -->
+            <div style="background:#0f172a;border-radius:6px;padding:7px 10px;display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+              <div style="font-size:0.68rem;color:#475569">Spouse's est. FRA benefit (PIA)</div>
+              <div id="ret-ss-sp-pia" style="font-size:0.88rem;font-weight:700;color:#38bdf8">—</div>
+            </div>
+
+            <!-- Combined result -->
+            <div style="background:#0f172a;border-radius:6px;padding:8px 10px;margin-bottom:10px">
+              <div style="display:grid;grid-template-columns:1fr auto;gap:3px 8px;font-size:0.72rem;margin-bottom:6px">
+                <span style="color:#475569">Your adjusted benefit</span>
+                <span id="ret-ss-my-result" style="color:#e2e8f0;text-align:right;font-weight:600">—</span>
+                <span style="color:#475569">Spouse's adjusted benefit</span>
+                <span id="ret-ss-sp-result" style="color:#e2e8f0;text-align:right;font-weight:600">—</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center;padding-top:6px;border-top:1px solid #1e293b">
+                <div>
+                  <div style="font-size:0.68rem;color:#475569">Combined monthly</div>
+                  <div id="ret-ss-combined" style="font-size:0.95rem;font-weight:700;color:#4ade80">—</div>
+                </div>
+                <button onclick="retUseSS()"
+                  style="background:#0c2a4a;color:#38bdf8;border:1px solid #1e40af44;border-radius:6px;padding:6px 10px;font-size:0.72rem;cursor:pointer;white-space:nowrap">
+                  Use estimate ↑
+                </button>
+              </div>
+            </div>
+
+            <div style="font-size:0.67rem;color:#334155;line-height:1.5">
+              Uses 2024 bend points. Spousal floor (50% of higher earner's PIA) applied automatically.
+              Actual benefit may differ; verify at ssa.gov.
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Portfolio -->
+        <div class="card" style="padding:18px">
+          <div class="section-label" style="margin:0 0 14px">Your Portfolio</div>
+          <div style="margin-bottom:16px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+              <span style="font-size:0.78rem;color:#94a3b8">Investment balance</span>
+              <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:0.7rem;color:#475569">
+                <input type="checkbox" id="ret-port-auto" onchange="retToggleAuto('port')" checked style="accent-color:#38bdf8">auto
+              </label>
+            </div>
+            <div id="ret-port-auto-display" style="display:flex;align-items:center;gap:6px">
+              <span style="font-size:0.75rem;color:#475569">From balance history:</span>
+              <span id="ret-port-auto-val" style="font-size:0.8rem;font-weight:600;color:#4ade80">—</span>
+            </div>
+            <div id="ret-port-manual" style="display:none;align-items:center;gap:3px">
+              <span style="font-size:0.78rem;color:#64748b">$</span>
+              <input type="number" id="ret-portfolio" class="budget-input" value="0" min="0" style="width:100%;flex:1" oninput="updateRetirementChart()">
+            </div>
+          </div>
+          <div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+              <span style="font-size:0.78rem;color:#94a3b8">Monthly contributions</span>
+              <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:0.7rem;color:#475569">
+                <input type="checkbox" id="ret-contrib-auto" onchange="retToggleAuto('contrib')" checked style="accent-color:#38bdf8">auto
+              </label>
+            </div>
+            <div id="ret-contrib-auto-display" style="display:flex;align-items:center;gap:6px">
+              <span style="font-size:0.75rem;color:#475569">From forecast settings:</span>
+              <span id="ret-contrib-auto-val" style="font-size:0.8rem;font-weight:600;color:#38bdf8">—</span>
+            </div>
+            <div id="ret-contrib-manual" style="display:none;align-items:center;gap:3px">
+              <span style="font-size:0.78rem;color:#64748b">$</span>
+              <input type="number" id="ret-contrib" class="budget-input" value="0" min="0" style="width:100%;flex:1" oninput="updateRetirementChart()">
+            </div>
+          </div>
+        </div>
+
+        <!-- Assumptions -->
+        <div class="card" style="padding:18px">
+          <div class="section-label" style="margin:0 0 14px">Assumptions</div>
+          <style>
+            .ret-slider-row { margin-bottom:14px }
+            .ret-slider-row:last-child { margin-bottom:0 }
+            .ret-slider-header { display:flex;justify-content:space-between;align-items:baseline;margin-bottom:5px }
+            .ret-slider-label { font-size:0.78rem;color:#94a3b8 }
+            .ret-slider-sub   { font-size:0.68rem;color:#475569 }
+            .ret-slider-val   { font-size:0.82rem;font-weight:700;color:#e2e8f0;min-width:38px;text-align:right }
+            input[type=range].ret-slider {
+              -webkit-appearance:none; appearance:none;
+              width:100%; height:4px; border-radius:2px;
+              background: linear-gradient(to right, #38bdf8 var(--pct,50%), #1e293b var(--pct,50%));
+              outline:none; cursor:pointer;
+            }
+            input[type=range].ret-slider::-webkit-slider-thumb {
+              -webkit-appearance:none; appearance:none;
+              width:14px; height:14px; border-radius:50%;
+              background:#38bdf8; border:2px solid #0f172a; cursor:pointer;
+            }
+            input[type=range].ret-slider::-moz-range-thumb {
+              width:14px; height:14px; border-radius:50%;
+              background:#38bdf8; border:2px solid #0f172a; cursor:pointer;
+            }
+          </style>
+
+          <div class="ret-slider-row">
+            <div class="ret-slider-header">
+              <div><span class="ret-slider-label">Pre-retirement return</span><br><span class="ret-slider-sub">annual, nominal</span></div>
+              <span class="ret-slider-val" id="ret-pre-return-val">7%</span>
+            </div>
+            <input type="range" class="ret-slider" id="ret-pre-return" min="0" max="15" step="0.5" value="7"
+              oninput="retSliderSync(this,'ret-pre-return-val');updateRetirementChart()">
+          </div>
+
+          <div class="ret-slider-row">
+            <div class="ret-slider-header">
+              <div><span class="ret-slider-label">Post-retirement return</span><br><span class="ret-slider-sub">annual, nominal</span></div>
+              <span class="ret-slider-val" id="ret-post-return-val">5%</span>
+            </div>
+            <input type="range" class="ret-slider" id="ret-post-return" min="0" max="12" step="0.5" value="5"
+              oninput="retSliderSync(this,'ret-post-return-val');updateRetirementChart()">
+          </div>
+
+          <div class="ret-slider-row">
+            <div class="ret-slider-header">
+              <span class="ret-slider-label">Inflation rate</span>
+              <span class="ret-slider-val" id="ret-inflation-val">3%</span>
+            </div>
+            <input type="range" class="ret-slider" id="ret-inflation" min="0" max="10" step="0.5" value="3"
+              oninput="retSliderSync(this,'ret-inflation-val');updateRetirementChart()">
+          </div>
+
+          <div class="ret-slider-row">
+            <div class="ret-slider-header">
+              <div><span class="ret-slider-label">Safe withdrawal rate</span><br><span class="ret-slider-sub">4% is standard</span></div>
+              <span class="ret-slider-val" id="ret-swr-val">4%</span>
+            </div>
+            <input type="range" class="ret-slider" id="ret-swr" min="2" max="8" step="0.1" value="4"
+              oninput="retSliderSync(this,'ret-swr-val');updateRetirementChart()">
+          </div>
+        </div>
+
+      </div><!-- end left panel -->
+
+      <!-- ── Right: Summary + Chart ── -->
+      <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:14px">
+
+        <!-- Status banner -->
+        <div id="ret-status-banner" class="card" style="padding:14px 20px;border-left:4px solid #334155">
+          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+            <div style="display:flex;align-items:center;gap:12px">
+              <span id="ret-status-icon" style="font-size:1.5rem">⏳</span>
+              <div>
+                <div id="ret-status-title" style="font-size:0.95rem;font-weight:700;color:#e2e8f0">Loading…</div>
+                <div id="ret-status-sub" style="font-size:0.75rem;color:#64748b;margin-top:2px"></div>
+              </div>
+            </div>
+            <div id="ret-gap-badge" style="font-size:0.82rem;padding:6px 14px;border-radius:20px;font-weight:600;background:#1e293b;color:#64748b;border:1px solid #334155"></div>
+          </div>
+        </div>
+
+        <!-- Metric cards -->
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px">
+          <div class="card summary-card">
+            <div class="lbl">Target Nest Egg</div>
+            <div class="val blue" id="ret-m-target">—</div>
+            <div class="sub">needed at <span id="ret-m-retire-age">age —</span></div>
+          </div>
+          <div class="card summary-card">
+            <div class="lbl">Projected at Retirement</div>
+            <div class="val" id="ret-m-projected">—</div>
+            <div class="sub" id="ret-m-projected-sub">vs. target</div>
+          </div>
+          <div class="card summary-card">
+            <div class="lbl">Required Contribution</div>
+            <div class="val" id="ret-m-required">—</div>
+            <div class="sub">per month to hit goal</div>
+          </div>
+          <div class="card summary-card">
+            <div class="lbl">Your Contribution</div>
+            <div class="val" id="ret-m-current">—</div>
+            <div class="sub" id="ret-m-current-sub">per month (current)</div>
+          </div>
+        </div>
+
+        <!-- Chart -->
+        <div class="card chart-card">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+            <h3 style="margin:0">Portfolio Projection</h3>
+            <div style="display:flex;gap:16px;font-size:0.72rem;color:#64748b" id="ret-legend">
+              <span><span style="display:inline-block;width:18px;height:2.5px;background:#38bdf8;vertical-align:middle;margin-right:5px;border-radius:2px"></span>Your path</span>
+              <span><span style="display:inline-block;width:18px;height:0;border-top:2.5px dashed #4ade80;vertical-align:middle;margin-right:5px"></span>Target path</span>
+            </div>
+          </div>
+          <div style="position:relative;height:380px"><canvas id="retirementChart"></canvas></div>
+        </div>
+
+        <!-- Longevity cards -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div class="card" style="padding:16px 20px">
+            <div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:#475569;margin-bottom:8px">Your Path — Money Lasts Until</div>
+            <div style="font-size:1.6rem;font-weight:700;margin-bottom:4px" id="ret-lon-current">—</div>
+            <div style="font-size:0.75rem;color:#64748b" id="ret-lon-current-sub"></div>
+          </div>
+          <div class="card" style="padding:16px 20px">
+            <div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:#475569;margin-bottom:8px">Target Path — Money Lasts Until</div>
+            <div style="font-size:1.6rem;font-weight:700;margin-bottom:4px" id="ret-lon-target">—</div>
+            <div style="font-size:0.75rem;color:#64748b" id="ret-lon-target-sub"></div>
+          </div>
+        </div>
+
+      </div><!-- end right panel -->
+    </div>
+  </div>
+</div><!-- end pane-retirement -->
+
+
 <!-- ═══════════════════ SCRIPT ═══════════════════ -->
 <script>
 // ══════════════════════════════════════════════════════════
@@ -682,14 +1024,16 @@ function switchTab(tab) {
   if (tab === 'accounts') {
     document.querySelector('[data-tab="accounts"]').textContent = '🏦 Accounts & Net Worth';
   }
-  document.getElementById('pane-spending').style.display  = tab === 'spending'  ? 'block' : 'none';
-  document.getElementById('pane-accounts').style.display  = tab === 'accounts'  ? 'block' : 'none';
-  document.getElementById('pane-forecast').style.display  = tab === 'forecast'  ? 'block' : 'none';
-  document.getElementById('pane-budget').style.display    = tab === 'budget'    ? 'block' : 'none';
-  document.getElementById('month-bar').style.display      = tab === 'spending'  ? 'flex'  : 'none';
-  if (tab === 'accounts') renderAccountsTab();
-  if (tab === 'forecast') renderForecastTab();
-  if (tab === 'budget')   renderBudgetTab();
+  document.getElementById('pane-spending').style.display    = tab === 'spending'    ? 'block' : 'none';
+  document.getElementById('pane-accounts').style.display    = tab === 'accounts'    ? 'block' : 'none';
+  document.getElementById('pane-forecast').style.display    = tab === 'forecast'    ? 'block' : 'none';
+  document.getElementById('pane-budget').style.display      = tab === 'budget'      ? 'block' : 'none';
+  document.getElementById('pane-retirement').style.display  = tab === 'retirement'  ? 'block' : 'none';
+  document.getElementById('month-bar').style.display        = tab === 'spending'    ? 'flex'  : 'none';
+  if (tab === 'accounts')   renderAccountsTab();
+  if (tab === 'forecast')   renderForecastTab();
+  if (tab === 'budget')     renderBudgetTab();
+  if (tab === 'retirement') renderRetirementTab();
 }
 
 // ══════════════════════════════════════════════════════════
@@ -2693,6 +3037,527 @@ async function runScraper() {
   } finally {
     btn.disabled = false;
   }
+}
+
+// ══════════════════════════════════════════════════════════
+//  RETIREMENT TAB
+// ══════════════════════════════════════════════════════════
+
+const RETIRE_KEY = 'financial_dashboard_retirement';
+let retireInitialized = false;
+
+function loadRetireParams() {
+  try { return JSON.parse(localStorage.getItem(RETIRE_KEY)) || {}; } catch { return {}; }
+}
+
+function saveRetireParams() {
+  const portAuto    = document.getElementById('ret-port-auto')?.checked    ?? true;
+  const contribAuto = document.getElementById('ret-contrib-auto')?.checked ?? true;
+  const num  = (id, fallback) => { const v = parseFloat(document.getElementById(id)?.value); return isNaN(v) ? fallback : v; };
+  const str  = (id) => { const v = document.getElementById(id)?.value?.trim(); return v || null; };
+  const p = {
+    currentAge:       num('ret-current-age',  30),
+    retireAge:        num('ret-retire-age',    65),
+    annualSpend:      num('ret-annual-spend',  60000),
+    ssMonthly:        num('ret-ss-monthly',    0),
+    preReturn:        num('ret-pre-return',    7),
+    postReturn:       num('ret-post-return',   5),
+    inflation:        num('ret-inflation',     3),
+    swr:              num('ret-swr',           4),
+    portAuto, contribAuto,
+    portfolioOverride: portAuto    ? null : (num('ret-portfolio', null)),
+    contribOverride:   contribAuto ? null : (num('ret-contrib',   null)),
+    ss: {
+      mySalary:    num('ret-ss-salary',        null),
+      myYrs:       num('ret-ss-yrs-worked',    null),
+      myLifetime:  str('ret-ss-lifetime'),
+      myClaim:     num('ret-ss-my-claim',      67),
+      spSalary:    num('ret-ss-sp-salary',     null),
+      spYrs:       num('ret-ss-sp-yrs-worked', null),
+      spLifetime:  str('ret-ss-sp-lifetime'),
+      spClaim:     num('ret-ss-sp-claim',      67),
+    },
+  };
+  try { localStorage.setItem(RETIRE_KEY, JSON.stringify(p)); } catch {}
+  return p;
+}
+
+function getAutoPortfolio() {
+  if (!balanceHistory.length) return 0;
+  const latest = balanceHistory[balanceHistory.length - 1];
+  return +latest.accounts.filter(a => a.type === 'Investment')
+    .reduce((s, a) => s + (a.value || 0), 0).toFixed(2);
+}
+
+function getAutoMonthlyContrib() {
+  const saved = loadInvestSaved();
+  if (!saved.accounts) return 0;
+  return +Object.values(saved.accounts)
+    .reduce((s, a) => s + ((a.contribution || 0) + (a.match || 0)), 0).toFixed(2);
+}
+
+function retToggleSS() {
+  const body = document.getElementById('ret-ss-body');
+  const chev = document.getElementById('ret-ss-chevron');
+  const open = body.style.display === 'none';
+  body.style.display = open ? 'block' : 'none';
+  chev.textContent   = open ? '▲ hide' : '▼ show';
+  if (open) {
+    // Pre-fill years worked from current age (assume work started at 22)
+    const ywEl = document.getElementById('ret-ss-yrs-worked');
+    if (ywEl && !ywEl._userEdited) {
+      const age = parseFloat(document.getElementById('ret-current-age')?.value) || 27;
+      ywEl.value = Math.max(0, Math.min(35, Math.round(age - 22)));
+    }
+    updateSSCalc();
+  }
+}
+
+// 2024 SS bend points (monthly AIME)
+const SS_BEND1 = 1174, SS_BEND2 = 7078;
+// 2024 SS wage base cap
+const SS_WAGE_BASE = 168600;
+
+function estimatePIA(annualSalary, yearsWorked, lifetimeEarningsOverride) {
+  const salary = Math.min(annualSalary, SS_WAGE_BASE);
+  const totalYears = 35;
+
+  // Past earnings: use override if provided, else estimate prior years at 75% of current salary
+  // (accounts for typically lower pay earlier in career)
+  const pastTotal = (lifetimeEarningsOverride != null && lifetimeEarningsOverride > 0)
+    ? lifetimeEarningsOverride
+    : Math.min(yearsWorked, totalYears) * salary * 0.75;
+
+  // Future earnings: fill remaining years up to 35 at current salary
+  const futureYears = Math.max(0, totalYears - yearsWorked);
+  const futureTotal = futureYears * salary;
+
+  const totalEarnings = pastTotal + futureTotal;
+  const aime = totalEarnings / (totalYears * 12);
+
+  // Apply bend point formula
+  const pia = 0.90 * Math.min(aime, SS_BEND1)
+            + 0.32 * Math.max(0, Math.min(aime, SS_BEND2) - SS_BEND1)
+            + 0.15 * Math.max(0, aime - SS_BEND2);
+
+  return Math.round(pia);
+}
+
+function computeSS() {
+  const FRA = 67;
+
+  // My inputs
+  const salary    = parseFloat(document.getElementById('ret-ss-salary')?.value)    || 0;
+  const yrsWorked = parseFloat(document.getElementById('ret-ss-yrs-worked')?.value) ?? 5;
+  const lifetimeRaw = document.getElementById('ret-ss-lifetime')?.value;
+  const lifetime  = lifetimeRaw && lifetimeRaw.trim() !== '' ? parseFloat(lifetimeRaw) : null;
+  const myClaim   = parseFloat(document.getElementById('ret-ss-my-claim')?.value)  || FRA;
+
+  const spSalary   = parseFloat(document.getElementById('ret-ss-sp-salary')?.value)    || 0;
+  const spYrs      = parseFloat(document.getElementById('ret-ss-sp-yrs-worked')?.value) ?? 5;
+  const spLifeRaw  = document.getElementById('ret-ss-sp-lifetime')?.value;
+  const spLifetime = spLifeRaw && spLifeRaw.trim() !== '' ? parseFloat(spLifeRaw) : null;
+  const spClaim    = parseFloat(document.getElementById('ret-ss-sp-claim')?.value) || FRA;
+
+  const myFRA = estimatePIA(salary, yrsWorked, lifetime);
+  const spFRA = estimatePIA(spSalary, spYrs, spLifetime);
+
+  // Adjust for claiming age
+  const ownAdjust = (fraBen, claimAge) => {
+    const months = Math.round((claimAge - FRA) * 12);
+    if (months >= 0) return fraBen * (1 + months * (2/3) / 100);
+    const early = -months;
+    const cut = Math.min(early, 36) * (5/9) / 100 + Math.max(0, early - 36) * (5/12) / 100;
+    return fraBen * (1 - cut);
+  };
+
+  // Spousal reduction for early claiming
+  const spousalFactor = (claimAge) => {
+    const monthsEarly = Math.max(0, Math.round((FRA - claimAge) * 12));
+    const cut = Math.min(monthsEarly, 36) * (25/36) / 100 + Math.max(0, monthsEarly - 36) * (5/12) / 100;
+    return 1 - cut;
+  };
+
+  let myBen = ownAdjust(myFRA, myClaim);
+  let spBen = ownAdjust(spFRA, spClaim);
+
+  // Apply spousal floor
+  if (myFRA > 0 || spFRA > 0) {
+    myBen = Math.max(myBen, spFRA  * 0.5 * spousalFactor(myClaim));
+    spBen = Math.max(spBen, myFRA  * 0.5 * spousalFactor(spClaim));
+  }
+
+  return { myFRA, spFRA, myBen, spBen, combined: myBen + spBen };
+}
+
+function updateSSCalc() {
+  const r = computeSS();
+  const set = (id, txt) => { const el = document.getElementById(id); if (el) el.textContent = txt; };
+  set('ret-ss-my-pia',    fmt(r.myFRA) + '/mo');
+  set('ret-ss-sp-pia',    fmt(r.spFRA) + '/mo');
+  set('ret-ss-my-result', fmt(r.myBen));
+  set('ret-ss-sp-result', fmt(r.spBen));
+  set('ret-ss-combined',  fmt(r.combined) + '/mo');
+  try { saveRetireParams(); } catch {}
+}
+
+function retUseSS() {
+  const r = computeSS();
+  const el = document.getElementById('ret-ss-monthly');
+  if (el) { el.value = Math.round(r.combined); updateRetirementChart(); }
+}
+
+function retSliderSync(slider, valId) {
+  const min = parseFloat(slider.min), max = parseFloat(slider.max), val = parseFloat(slider.value);
+  const pct = ((val - min) / (max - min) * 100).toFixed(1) + '%';
+  slider.style.setProperty('--pct', pct);
+  const el = document.getElementById(valId);
+  if (el) el.textContent = val % 1 === 0 ? val + '%' : val.toFixed(1) + '%';
+}
+
+function retToggleAuto(which) {
+  const isAuto  = document.getElementById(`ret-${which}-auto`)?.checked;
+  document.getElementById(`ret-${which}-auto-display`).style.display = isAuto ? 'flex' : 'none';
+  document.getElementById(`ret-${which}-manual`).style.display       = isAuto ? 'none' : 'flex';
+  if (!isAuto) {
+    const autoVal = which === 'port' ? getAutoPortfolio() : getAutoMonthlyContrib();
+    const inputEl = document.getElementById(which === 'port' ? 'ret-portfolio' : 'ret-contrib');
+    if (inputEl && !inputEl.value) inputEl.value = autoVal;
+  }
+  updateRetirementChart();
+}
+
+function computeRetirementProjection({ currentAge, retireAge, annualSpend, ssMonthly, ssClaimAge, preReturn, postReturn, inflation, swr, currentPortfolio, monthlyContrib }) {
+  // Hard clamp all inputs so extreme typos can't produce Infinity / NaN
+  currentAge    = Math.min(Math.max(currentAge    || 30, 18),  80);
+  retireAge     = Math.min(Math.max(retireAge     || 65, 19),  90);
+  annualSpend   = Math.min(Math.max(annualSpend   ||  0,  0), 10_000_000);
+  ssMonthly     = Math.min(Math.max(ssMonthly     ||  0,  0),    100_000);
+  preReturn     = Math.min(Math.max(preReturn     ||  7,  0),         50);
+  postReturn    = Math.min(Math.max(postReturn    ||  5,  0),         50);
+  inflation     = Math.min(Math.max(inflation     ||  3,  0),         30);
+  swr           = Math.min(Math.max(swr           ||  4,  0.1),       20);
+  currentPortfolio = Math.min(Math.max(currentPortfolio || 0, 0), 1e10);
+  monthlyContrib   = Math.min(Math.max(monthlyContrib   || 0, 0), 1e7);
+  if (retireAge <= currentAge) retireAge = currentAge + 1;
+
+  const yearsToRetire  = Math.max(0, retireAge - currentAge);
+  const monthsToRetire = yearsToRetire * 12;
+  const rPre  = preReturn  / 100 / 12;
+  const rPost = postReturn / 100 / 12;
+
+  // Inflate spending & SS to retirement-date nominal dollars
+  const inflFactor          = Math.pow(1 + inflation / 100, yearsToRetire);
+  const annualSpendAtRetire = annualSpend * inflFactor;
+  const annualSSAtRetire    = ssMonthly * 12 * inflFactor;
+  // ssClaimAgeEff: age when SS income first starts; default to retireAge if unset
+  const ssClaimAgeEff       = (ssClaimAge != null && ssClaimAge > retireAge) ? ssClaimAge : retireAge;
+  const annualNetDraw       = Math.max(0, annualSpendAtRetire - annualSSAtRetire);
+
+  // Target nest egg (nominal at retirement)
+  const targetNestEgg = swr > 0 ? annualNetDraw / (swr / 100) : 0;
+
+  // FV growth factor at retirement
+  const fvFactor = monthsToRetire > 0 ? Math.pow(1 + rPre, monthsToRetire) : 1;
+  const pvGrowth = currentPortfolio * fvFactor;
+
+  // Projected portfolio at retirement
+  const contribFV = (rPre > 0 && monthsToRetire > 0)
+    ? monthlyContrib * (fvFactor - 1) / rPre
+    : monthlyContrib * monthsToRetire;
+  const projectedAtRetire = Math.max(0, pvGrowth + contribFV);
+
+  // Required monthly contribution to hit target
+  let requiredContrib = 0;
+  if (targetNestEgg > 0 && monthsToRetire > 0) {
+    const needed = targetNestEgg - pvGrowth;
+    requiredContrib = Math.max(0, (rPre > 0 && fvFactor > 1)
+      ? needed * rPre / (fvFactor - 1)
+      : needed / monthsToRetire);
+  }
+
+  // Build year-by-year data (accumulation → drawdown)
+  const DRAWDOWN_YEARS = 40;
+  const ages = [], projLine = [], targetLine = [];
+
+  // Accumulation phase
+  for (let y = 0; y <= yearsToRetire; y++) {
+    const m  = y * 12;
+    const fv = Math.pow(1 + rPre, m);
+    const pj = currentPortfolio * fv + (rPre > 0 && m > 0 ? monthlyContrib  * (fv - 1) / rPre : monthlyContrib  * m);
+    const tg = currentPortfolio * fv + (rPre > 0 && m > 0 ? requiredContrib * (fv - 1) / rPre : requiredContrib * m);
+    ages.push(currentAge + y);
+    projLine.push(Math.round(Math.max(0, pj)));
+    targetLine.push(Math.round(Math.max(0, tg)));
+  }
+
+  // Drawdown phase (month-by-month, sampled annually)
+  let projPort = projectedAtRetire;
+  let tgtPort  = targetNestEgg;
+  let projDepletionAge = null, tgtDepletionAge = null;
+
+  for (let y = 1; y <= DRAWDOWN_YEARS; y++) {
+    const ageNow   = retireAge + y;
+    const idr      = Math.pow(1 + inflation / 100, y - 1);
+    const ssIncome = ageNow >= ssClaimAgeEff ? annualSSAtRetire * idr : 0;
+    const monthlyWd = Math.max(0, annualSpendAtRetire * idr - ssIncome) / 12;
+    for (let m = 0; m < 12; m++) {
+      projPort = projPort * (1 + rPost) - monthlyWd;
+      tgtPort  = tgtPort  * (1 + rPost) - monthlyWd;
+    }
+    const age = retireAge + y;
+    if (projPort <= 0 && projDepletionAge === null) projDepletionAge = age;
+    if (tgtPort  <= 0 && tgtDepletionAge  === null) tgtDepletionAge  = age;
+    ages.push(age);
+    projLine.push(Math.round(Math.max(0, projPort)));
+    targetLine.push(Math.round(Math.max(0, tgtPort)));
+    if (projPort <= 0 && tgtPort <= 0) break;
+  }
+
+  return {
+    targetNestEgg, projectedAtRetire, requiredContrib, monthlyContrib,
+    onTrack: projectedAtRetire >= targetNestEgg,
+    gap:     projectedAtRetire - targetNestEgg,
+    ages, projLine, targetLine,
+    retireIdx: yearsToRetire,
+    projDepletionAge, tgtDepletionAge, annualNetDraw,
+  };
+}
+
+let _retireAge = 65;
+const retirementLinePlugin = {
+  id: 'retirementLine',
+  afterDraw(chart) {
+    const { ctx, chartArea, scales } = chart;
+    if (!scales.x) return;
+    const x = scales.x.getPixelForValue(_retireAge);
+    if (x == null || x < chartArea.left || x > chartArea.right) return;
+    ctx.save();
+    ctx.strokeStyle = '#f59e0b';
+    ctx.lineWidth   = 1.5;
+    ctx.setLineDash([5, 4]);
+    ctx.beginPath(); ctx.moveTo(x, chartArea.top); ctx.lineTo(x, chartArea.bottom); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = '#f59e0b';
+    ctx.font = 'bold 10px system-ui';
+    ctx.textAlign = 'center';
+    ctx.fillText('RETIRE', x, chartArea.top + 13);
+    ctx.restore();
+  }
+};
+
+function renderRetirementTab() {
+  if (!retireInitialized) {
+    const p = loadRetireParams();
+    const sv = (id, v) => { const el = document.getElementById(id); if (el && v != null) el.value = v; };
+    sv('ret-current-age',  p.currentAge  ?? 30);
+    sv('ret-retire-age',   p.retireAge   ?? 65);
+    sv('ret-annual-spend', p.annualSpend ?? 60000);
+    sv('ret-ss-monthly',   p.ssMonthly   ?? 0);
+    sv('ret-pre-return',   p.preReturn   ?? 7);
+    sv('ret-post-return',  p.postReturn  ?? 5);
+    sv('ret-inflation',    p.inflation   ?? 3);
+    sv('ret-swr',          p.swr         ?? 4);
+    const portAuto    = p.portAuto    ?? true;
+    const contribAuto = p.contribAuto ?? true;
+    document.getElementById('ret-port-auto').checked    = portAuto;
+    document.getElementById('ret-contrib-auto').checked = contribAuto;
+    document.getElementById('ret-port-auto-display').style.display    = portAuto    ? 'flex' : 'none';
+    document.getElementById('ret-port-manual').style.display          = portAuto    ? 'none' : 'flex';
+    document.getElementById('ret-contrib-auto-display').style.display = contribAuto ? 'flex' : 'none';
+    document.getElementById('ret-contrib-manual').style.display       = contribAuto ? 'none' : 'flex';
+    if (!portAuto    && p.portfolioOverride != null) sv('ret-portfolio', p.portfolioOverride);
+    if (!contribAuto && p.contribOverride   != null) sv('ret-contrib',   p.contribOverride);
+    // Restore SS estimator fields
+    if (p.ss) {
+      if (p.ss.mySalary   != null) sv('ret-ss-salary',        p.ss.mySalary);
+      if (p.ss.myLifetime != null) sv('ret-ss-lifetime',      p.ss.myLifetime);
+      if (p.ss.myClaim    != null) sv('ret-ss-my-claim',      p.ss.myClaim);
+      if (p.ss.spSalary   != null) sv('ret-ss-sp-salary',     p.ss.spSalary);
+      if (p.ss.spLifetime != null) sv('ret-ss-sp-lifetime',   p.ss.spLifetime);
+      if (p.ss.spClaim    != null) sv('ret-ss-sp-claim',      p.ss.spClaim);
+      // Years-worked: restore if explicitly saved, mark as user-edited so toggle doesn't overwrite
+      const ywEl = document.getElementById('ret-ss-yrs-worked');
+      if (ywEl && p.ss.myYrs != null) { ywEl.value = p.ss.myYrs; ywEl._userEdited = true; }
+      const spYwEl = document.getElementById('ret-ss-sp-yrs-worked');
+      if (spYwEl && p.ss.spYrs != null) { spYwEl.value = p.ss.spYrs; spYwEl._userEdited = true; }
+    }
+    // Sync slider fill and labels after values are set
+    [['ret-pre-return','ret-pre-return-val'],['ret-post-return','ret-post-return-val'],
+     ['ret-inflation','ret-inflation-val'],['ret-swr','ret-swr-val']].forEach(([id, vid]) => {
+      const el = document.getElementById(id);
+      if (el) retSliderSync(el, vid);
+    });
+    retireInitialized = true;
+  }
+  updateRetirementChart();
+}
+
+function updateRetirementChart() {
+  saveRetireParams();
+
+  const portAuto    = document.getElementById('ret-port-auto')?.checked    ?? true;
+  const contribAuto = document.getElementById('ret-contrib-auto')?.checked ?? true;
+  const autoPV  = getAutoPortfolio();
+  const autoC   = getAutoMonthlyContrib();
+
+  const pvEl = document.getElementById('ret-port-auto-val');
+  const cEl  = document.getElementById('ret-contrib-auto-val');
+  if (pvEl) pvEl.textContent = fmt(autoPV);
+  if (cEl)  cEl.textContent  = fmt(autoC);
+
+  const currentPortfolio = portAuto    ? autoPV : (parseFloat(document.getElementById('ret-portfolio')?.value) || 0);
+  const monthlyContrib   = contribAuto ? autoC  : (parseFloat(document.getElementById('ret-contrib')?.value)   || 0);
+
+  const clamp = (v, lo, hi) => Math.min(Math.max(isNaN(v) ? lo : v, lo), hi);
+  const params = {
+    currentAge:  clamp(parseFloat(document.getElementById('ret-current-age')?.value),  18, 80),
+    retireAge:   clamp(parseFloat(document.getElementById('ret-retire-age')?.value),   19, 90),
+    annualSpend: clamp(parseFloat(document.getElementById('ret-annual-spend')?.value),  0, 10_000_000),
+    ssMonthly:   parseFloat(document.getElementById('ret-ss-monthly')?.value)   || 0,
+    ssClaimAge:  (() => {
+      const ssM = parseFloat(document.getElementById('ret-ss-monthly')?.value) || 0;
+      if (ssM <= 0) return null;
+      const mc = parseFloat(document.getElementById('ret-ss-my-claim')?.value);
+      const sc = parseFloat(document.getElementById('ret-ss-sp-claim')?.value);
+      const candidates = [mc, sc].filter(v => !isNaN(v) && v > 0);
+      return candidates.length > 0 ? Math.min(...candidates) : null;
+    })(),
+    preReturn:   parseFloat(document.getElementById('ret-pre-return')?.value)   || 7,
+    postReturn:  parseFloat(document.getElementById('ret-post-return')?.value)  || 5,
+    inflation:   parseFloat(document.getElementById('ret-inflation')?.value)    || 3,
+    swr:         parseFloat(document.getElementById('ret-swr')?.value)          || 4,
+    currentPortfolio, monthlyContrib,
+  };
+  if (params.retireAge <= params.currentAge) return;
+
+  const r = computeRetirementProjection(params);
+
+  // ── Summary cards ───────────────────────────────────────
+  const set = (id, txt) => { const el = document.getElementById(id); if (el) el.textContent = txt; };
+  set('ret-m-target',        fmt(r.targetNestEgg));
+  set('ret-m-retire-age',    `age ${params.retireAge}`);
+  set('ret-m-projected',     fmt(r.projectedAtRetire));
+  set('ret-m-projected-sub', r.onTrack
+    ? `+${fmt(r.gap)} surplus`
+    : `${fmt(Math.abs(r.gap))} shortfall`);
+  set('ret-m-required', fmt(r.requiredContrib));
+  set('ret-m-current',  fmt(params.monthlyContrib));
+  const projEl = document.getElementById('ret-m-projected');
+  if (projEl) projEl.className = 'val ' + (r.onTrack ? 'green' : 'red');
+  const reqEl = document.getElementById('ret-m-required');
+  if (reqEl)  reqEl.className  = 'val ' + (r.requiredContrib <= params.monthlyContrib ? 'green' : 'red');
+
+  // ── Status banner ────────────────────────────────────────
+  const banner = document.getElementById('ret-status-banner');
+  if (banner) banner.style.borderLeft = `4px solid ${r.onTrack ? '#4ade80' : '#f87171'}`;
+  if (r.onTrack) {
+    set('ret-status-icon',  '✅');
+    set('ret-status-title', 'On Track for Retirement');
+    set('ret-status-sub',   `At ${fmt(params.monthlyContrib)}/mo you will hit your target — you could reduce contributions to ${fmt(r.requiredContrib)}/mo and still reach your goal.`);
+    const gb = document.getElementById('ret-gap-badge');
+    if (gb) { gb.textContent = `+${fmt(r.gap)} surplus at retirement`; gb.style.cssText='background:#052e1644;color:#4ade80;border:1px solid #4ade8044;font-size:0.82rem;padding:6px 14px;border-radius:20px;font-weight:600'; }
+  } else {
+    set('ret-status-icon',  '⚠️');
+    set('ret-status-title', 'Contribution Increase Needed');
+    const diff = r.requiredContrib - params.monthlyContrib;
+    set('ret-status-sub',   `Increase contributions by ${fmt(diff)}/mo (from ${fmt(params.monthlyContrib)} → ${fmt(r.requiredContrib)}) to retire on schedule.`);
+    const gb = document.getElementById('ret-gap-badge');
+    if (gb) { gb.textContent = `+${fmt(diff)}/mo needed`; gb.style.cssText='background:#2d0a0a44;color:#f87171;border:1px solid #f8717144;font-size:0.82rem;padding:6px 14px;border-radius:20px;font-weight:600'; }
+  }
+
+  // ── Longevity cards ──────────────────────────────────────
+  const fmtAge = age => age != null ? `Age ${age}` : `Age ${params.retireAge + 40}+`;
+  const lonYrs = (age, base) => age != null ? `${age - base} years into retirement` : 'Beyond 40-year projection window';
+
+  const lonCurEl = document.getElementById('ret-lon-current');
+  if (lonCurEl) { lonCurEl.textContent = fmtAge(r.projDepletionAge); lonCurEl.style.color = (!r.projDepletionAge || r.projDepletionAge >= params.retireAge + 30) ? '#4ade80' : '#f87171'; }
+  set('ret-lon-current-sub', lonYrs(r.projDepletionAge, params.retireAge));
+
+  const lonTgtEl = document.getElementById('ret-lon-target');
+  if (lonTgtEl) { lonTgtEl.textContent = fmtAge(r.tgtDepletionAge); lonTgtEl.style.color = (!r.tgtDepletionAge || r.tgtDepletionAge >= params.retireAge + 30) ? '#4ade80' : '#f87171'; }
+  set('ret-lon-target-sub', lonYrs(r.tgtDepletionAge, params.retireAge));
+
+  // ── Chart ────────────────────────────────────────────────
+  destroyChart('retirementChart');
+  const canvas = document.getElementById('retirementChart');
+  if (!canvas) return;
+
+  _retireAge = params.retireAge;
+
+  const sameEnough = r.requiredContrib <= 0 ||
+    Math.abs(params.monthlyContrib - r.requiredContrib) < Math.max(r.requiredContrib * 0.02, 5);
+
+  const projColor = r.onTrack ? '#4ade80' : '#38bdf8';
+  const toPoints  = (vals) => r.ages.map((age, i) => ({ x: age, y: vals[i] }));
+
+  const datasets = [{
+    label: 'Your Path',
+    data:  toPoints(r.projLine),
+    borderColor: projColor,
+    backgroundColor: projColor + '18',
+    borderWidth: 2.5,
+    pointRadius: 0, pointHoverRadius: 5,
+    tension: 0.3, fill: false,
+  }];
+
+  if (!sameEnough) {
+    datasets.push({
+      label: 'Target Path',
+      data:  toPoints(r.targetLine),
+      borderColor: '#4ade80',
+      backgroundColor: '#4ade8010',
+      borderWidth: 1.5,
+      borderDash: [5, 4],
+      pointRadius: 0, pointHoverRadius: 5,
+      tension: 0.3, fill: false,
+    });
+  }
+
+  // Show/hide legend second item based on whether both lines are rendered
+  const legendEl = document.getElementById('ret-legend');
+  if (legendEl) legendEl.children[1].style.display = sameEnough ? 'none' : '';
+
+  CI['retirementChart'] = new Chart(canvas, {
+    type: 'line',
+    plugins: [retirementLinePlugin],
+    data: { datasets },
+    options: {
+      animation: false,
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            title: items => `Age ${items[0].parsed.x}`,
+            label: ctx  => ` ${ctx.dataset.label}: ${fmt(ctx.parsed.y)}`,
+          }
+        }
+      },
+      scales: {
+        x: {
+          type: 'linear',
+          ticks: {
+            color: '#64748b', font: { size: 11 },
+            callback: v => Number.isInteger(v) && v % 5 === 0 ? String(v) : '',
+            stepSize: 1,
+          },
+          grid: { color: '#1e293b' },
+        },
+        y: {
+          min: 0,
+          ticks: {
+            color: '#64748b', font: { size: 10 },
+            callback: v => v >= 1_000_000 ? `$${(v/1_000_000).toFixed(1)}M`
+                        : v >= 1000       ? `$${(v/1000).toFixed(0)}K`
+                        : `$${v}`,
+          },
+          grid: { color: '#334155' },
+        }
+      }
+    }
+  });
 }
 
 // ══════════════════════════════════════════════════════════
