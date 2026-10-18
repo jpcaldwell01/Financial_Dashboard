@@ -1,0 +1,17 @@
+# Transaction exports — contain real spending, account names, and amounts
+RocketMoneyCSVs/
+
+# Balance snapshots — contain account names, balances, and institution data
+AccountData/balances_*.json
+
+# Scraper credentials and account configuration
+scraper/.env
+scraper/accounts.config.json
+
+# Scraper debug screenshots (may show login screens with personal info)
+AccountData/*.png
+AccountData/*.jpg
+
+# Node dependencies
+node_modules/
+scraper/node_modules/

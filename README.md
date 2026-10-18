@@ -4,6 +4,60 @@ A local, single-page financial dashboard that visualises Rocket Money spending d
 
 ---
 
+## Setup After Cloning
+
+The data directories and credential files are gitignored and will not be present after a fresh clone. Run through these steps once before starting the server.
+
+### 1. Install scraper dependencies
+
+```powershell
+cd scraper
+npm install
+npm run setup   # downloads Chromium for Playwright
+cd ..
+```
+
+### 2. Create credential files
+
+```powershell
+cd scraper
+copy .env.example .env
+copy accounts.config.example.json accounts.config.json
+cd ..
+```
+
+Open `scraper/.env` and fill in your Rocket Money login:
+
+```
+ROCKET_EMAIL=you@example.com
+ROCKET_PASSWORD=yourpassword
+```
+
+Open `scraper/accounts.config.json` and replace each placeholder with your real account details. Find the URL for an account by navigating to it on `app.rocketmoney.com` and copying the address bar.
+
+### 3. Create data directories
+
+The server expects these folders to exist. Create them if they are missing:
+
+```powershell
+mkdir RocketMoneyCSVs
+mkdir AccountData
+```
+
+### 4. Add your Rocket Money CSV exports
+
+Download your transaction history from [Rocket Money](https://app.rocketmoney.com) (Transactions → Export) and place each monthly CSV file in `RocketMoneyCSVs/`. The server loads them automatically on startup.
+
+### 5. Start the server
+
+```powershell
+node server.js
+```
+
+Open **http://localhost:3000**. Run the balance scraper from the **Accounts & Net Worth** tab to populate `AccountData/` with your first snapshot.
+
+---
+
 ## To Do
 
 - [ ] Pull Rocket Money CSV data automatically instead of loading files manually
@@ -119,6 +173,7 @@ $env:SPENDING_DIR = "D:\my-csvs"; $env:BALANCES_DIR = "D:\my-balances"; node ser
 
 ## Security Notes
 
-- Credentials live only in `scraper/.env`, which is listed in `.gitignore` and never committed.
-- `accounts.config.json` is also gitignored.
+- Credentials live only in `scraper/.env`, which is gitignored and never committed.
+- `scraper/accounts.config.json` is also gitignored.
+- All personal data files (`RocketMoneyCSVs/`, `AccountData/balances_*.json`, scraper debug screenshots) are gitignored — see `.gitignore` at the project root.
 - The server binds to `localhost` only and has no authentication — do not expose it to a network.

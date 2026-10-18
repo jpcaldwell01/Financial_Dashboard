@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Financial Dashboard</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f172a; color: #e2e8f0; min-height: 100vh; }
@@ -165,24 +166,27 @@
 
 <!-- ═══════════════════ TAB BAR ═══════════════════ -->
 <div class="tab-bar">
-  <button class="tab-btn active" data-tab="spending" onclick="switchTab('spending')">
-    💸 Spending
-  </button>
-  <button class="tab-btn" data-tab="accounts" onclick="switchTab('accounts')">
+  <button class="tab-btn active" data-tab="accounts" onclick="switchTab('accounts')">
     🏦 Accounts &amp; Net Worth
   </button>
   <button class="tab-btn" data-tab="forecast" onclick="switchTab('forecast')">
     📈 Forecast
   </button>
+  <button class="tab-btn" data-tab="budget" onclick="switchTab('budget')">
+    🗂️ Budget
+  </button>
+  <button class="tab-btn" data-tab="spending" onclick="switchTab('spending')">
+    💸 Spending
+  </button>
 </div>
 
 <!-- ═══════════════════ MONTH PILL BAR (spending only) ═══════════════════ -->
-<div class="month-bar" id="month-bar">
+<div class="month-bar" id="month-bar" style="display:none">
   <span class="no-data-msg">Loading…</span>
 </div>
 
 <!-- ═══════════════════ PANE: SPENDING ═══════════════════ -->
-<div id="pane-spending">
+<div id="pane-spending" style="display:none">
   <div class="container" id="dashboard">
     <div class="empty-state">
       <div class="icon">📊</div>
@@ -193,7 +197,7 @@
 </div>
 
 <!-- ═══════════════════ PANE: ACCOUNTS ═══════════════════ -->
-<div id="pane-accounts" style="display:none">
+<div id="pane-accounts">
   <div class="container">
 
     <!-- Scraper panel -->
@@ -241,7 +245,10 @@
         <h3 style="margin:0">Account Balances Over Time</h3>
         <span id="scatter-hint" style="font-size:0.75rem;color:#475569">Load balance JSON files via Open Folder to populate this chart.</span>
       </div>
-      <div style="position:relative;height:380px"><canvas id="scatterChart"></canvas></div>
+      <div style="display:flex;gap:16px;align-items:flex-start">
+        <div id="scatter-legend" style="display:flex;flex-direction:column;gap:6px;min-width:160px;max-width:200px;flex-shrink:0;padding-top:4px"></div>
+        <div style="position:relative;height:380px;flex:1;min-width:0"><canvas id="scatterChart"></canvas></div>
+      </div>
     </div>
 
     <!-- Current balances table -->
@@ -291,82 +298,73 @@
 
     <div style="margin-top:22px"></div>
 
-    <!-- ── Investment Accounts ── -->
-    <div class="section-label">Investment Accounts</div>
-    <div class="card" style="padding:20px 22px">
-      <div style="display:flex;justify-content:flex-end;margin-bottom:12px">
-        <button onclick="addCustomInvAccount()" class="btn btn-secondary" style="font-size:0.76rem;padding:5px 14px">+ Add Account</button>
-      </div>
-      <div class="inv-account-header">
-        <span>Account</span><span>Starting Balance</span><span>Return/yr</span>
-        <span>Your Contrib</span><span>Employer Match</span><span></span>
-      </div>
-      <div id="inv-account-rows" style="margin-bottom:4px">
-        <div style="padding:20px 0;color:#475569;font-size:0.82rem">Loading…</div>
-      </div>
-      <div style="font-size:0.68rem;color:#334155;margin-bottom:18px">Contributions are per paycheck · 2×/month</div>
-      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px">
-        <div class="card summary-card" style="padding:12px 14px;border-color:#1e3a5f">
-          <div class="lbl">Projected Value</div>
-          <div class="val blue" id="inv-proj-val" style="font-size:1.25rem">—</div>
-          <div class="sub" id="inv-proj-sub">at end of horizon</div>
-        </div>
-        <div class="card summary-card" style="padding:12px 14px;border-color:#1e3a5f">
-          <div class="lbl">Total Contributed</div>
-          <div class="val" id="inv-total-contrib" style="font-size:1.25rem">—</div>
-          <div class="sub" id="inv-contrib-sub">you + employer</div>
-        </div>
-        <div class="card summary-card" style="padding:12px 14px;border-color:#1e3a5f">
-          <div class="lbl">Growth from Returns</div>
-          <div class="val green" id="inv-growth" style="font-size:1.25rem">—</div>
-          <div class="sub">compounded earnings</div>
-        </div>
-        <div class="card summary-card" style="padding:12px 14px;border-color:#1e3a5f">
-          <div class="lbl">Total Gain</div>
-          <div class="val green" id="inv-growth-pct" style="font-size:1.25rem">—</div>
-          <div class="sub">vs. contributions only</div>
-        </div>
-      </div>
-    </div>
-
-    <div style="margin-top:22px"></div>
-
     <!-- ── Cash Balance ── -->
     <div class="section-label">Cash Balance</div>
-    <div class="card" style="padding:20px 22px">
-      <!-- Income control -->
-      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:16px">
+    <div class="card" style="padding:14px 18px">
+      <!-- Mode toggle -->
+      <div style="display:flex;margin-bottom:10px;border:1px solid #334155;border-radius:7px;overflow:hidden;width:fit-content">
+        <button id="cash-mode-btn-net" onclick="setCashMode('net')"
+          style="padding:4px 14px;font-size:0.76rem;font-weight:600;border:none;cursor:pointer;background:#38bdf8;color:#0f172a;transition:all 0.15s">
+          Net / Month
+        </button>
+        <button id="cash-mode-btn-income" onclick="setCashMode('income')"
+          style="padding:4px 14px;font-size:0.76rem;font-weight:600;border:none;cursor:pointer;background:#1e293b;color:#64748b;transition:all 0.15s">
+          Income − Budget
+        </button>
+      </div>
+
+      <!-- Net/Month mode -->
+      <div id="cash-row-net" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+        <span class="lbl" style="margin:0;white-space:nowrap">Net / Month</span>
+        <div style="display:flex;align-items:center;gap:4px">
+          <span style="color:#64748b;font-size:0.82rem">$</span>
+          <input class="budget-input" type="number" step="100" id="cash-net-input"
+            placeholder="auto" style="width:110px"
+            oninput="document.getElementById('cash-net-preset').value='custom';saveCashParams();updateCombinedChart()">
+          <select id="cash-net-preset" onchange="setCashNetFromPreset(this)"
+            style="background:#1e293b;color:#38bdf8;border:1px solid #334155;border-radius:6px;font-size:0.74rem;padding:2px 4px;cursor:pointer">
+            <option value="custom">Custom</option>
+            <option value="last">Last month</option>
+            <option value="avg3">3-month avg</option>
+            <option value="avg6">6-month avg</option>
+          </select>
+        </div>
+        <span id="cash-net-source" style="font-size:0.72rem;color:#475569"></span>
+      </div>
+
+      <!-- Income − Budget mode -->
+      <div id="cash-row-income" style="display:none;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px">
         <span class="lbl" style="margin:0;white-space:nowrap">Monthly Income</span>
         <div style="display:flex;align-items:center;gap:4px">
           <span style="color:#64748b;font-size:0.82rem">$</span>
-          <input class="budget-input" type="number" min="0" step="100" id="cash-income-input"
-            placeholder="auto" style="width:110px"
-            oninput="saveCashParams();updateCombinedChart()">
-          <button onclick="resetCashIncome()" title="Reset to last month's income"
-            style="background:none;border:none;color:#38bdf8;font-size:0.8rem;cursor:pointer;padding:1px 4px">↺</button>
+          <input class="budget-input" type="number" step="100" id="cash-income-input"
+            placeholder="0" style="width:110px"
+            oninput="document.getElementById('cash-income-preset').value='custom';saveCashParams();updateCombinedChart()">
+          <select id="cash-income-preset" onchange="setCashIncomeFromPreset(this)"
+            style="background:#1e293b;color:#38bdf8;border:1px solid #334155;border-radius:6px;font-size:0.74rem;padding:2px 4px;cursor:pointer">
+            <option value="custom">Custom</option>
+            <option value="last">Last month</option>
+            <option value="avg3">3-month avg</option>
+            <option value="avg6">6-month avg</option>
+          </select>
         </div>
-        <span id="cash-income-source" style="font-size:0.72rem;color:#475569"></span>
+        <span id="cash-income-net-display" style="font-size:0.78rem;color:#64748b"></span>
       </div>
       <!-- Summary cards -->
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px">
-        <div class="card summary-card" style="padding:12px 14px;border-color:#1e3a5f">
+      <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:12px">
+        <div class="card summary-card" style="padding:8px 12px;border-color:#1e3a5f">
           <div class="lbl">Current Liquid Balance</div>
-          <div class="val blue" id="cash-current-bal" style="font-size:1.25rem">—</div>
+          <div class="val blue" id="cash-current-bal" style="font-size:1.1rem">—</div>
           <div class="sub" id="cash-current-sub">Checking + Savings</div>
         </div>
-        <div class="card summary-card" style="padding:12px 14px;border-color:#1e3a5f">
-          <div class="lbl">Net / Month</div>
-          <div class="val" id="cash-net-month" style="font-size:1.25rem">—</div>
-          <div class="sub" id="cash-net-sub">income − budget</div>
-        </div>
-        <div class="card summary-card" style="padding:12px 14px;border-color:#1e3a5f">
+        <div class="card summary-card" style="padding:8px 12px;border-color:#1e3a5f">
           <div class="lbl">Projected Balance</div>
-          <div class="val" id="cash-proj-bal" style="font-size:1.25rem">—</div>
+          <div class="val" id="cash-proj-bal" style="font-size:1.1rem">—</div>
           <div class="sub" id="cash-proj-sub">at end of horizon</div>
         </div>
       </div>
       <!-- Planned Purchases -->
-      <div style="border-top:1px solid #334155;padding-top:16px">
+      <div style="border-top:1px solid #334155;padding-top:10px">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
           <span style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#475569">Planned Purchases</span>
           <button onclick="addPlannedPurchase()" class="btn btn-secondary" style="font-size:0.76rem;padding:4px 12px">+ Add</button>
@@ -380,13 +378,59 @@
       </div>
     </div>
 
-    <div style="margin-top:28px"></div>
+    <div style="margin-top:14px"></div>
+
+    <!-- ── Investment Accounts ── -->
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+      <div class="section-label" style="margin:0">Investment Accounts</div>
+      <button onclick="addCustomInvAccount()" class="btn btn-secondary" style="font-size:0.74rem;padding:4px 12px">+ Add Account</button>
+    </div>
+    <div class="card" style="padding:14px 18px">
+      <div class="inv-account-header">
+        <span>Account</span><span>Starting Balance</span><span>Return/yr</span>
+        <span>Your Contrib</span><span>Employer Match</span><span></span>
+      </div>
+      <div id="inv-account-rows" style="margin-bottom:2px">
+        <div style="padding:14px 0;color:#475569;font-size:0.82rem">Loading…</div>
+      </div>
+      <div style="font-size:0.68rem;color:#334155;margin-bottom:10px">Contributions are per paycheck · 2×/month</div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
+        <div class="card summary-card" style="padding:8px 12px;border-color:#1e3a5f">
+          <div class="lbl">Projected Value</div>
+          <div class="val blue" id="inv-proj-val" style="font-size:1.1rem">—</div>
+          <div class="sub" id="inv-proj-sub">at end of horizon</div>
+        </div>
+        <div class="card summary-card" style="padding:8px 12px;border-color:#1e3a5f">
+          <div class="lbl">Total Contributed</div>
+          <div class="val" id="inv-total-contrib" style="font-size:1.1rem">—</div>
+          <div class="sub" id="inv-contrib-sub">you + employer</div>
+        </div>
+        <div class="card summary-card" style="padding:8px 12px;border-color:#1e3a5f">
+          <div class="lbl">Growth from Returns</div>
+          <div class="val green" id="inv-growth" style="font-size:1.1rem">—</div>
+          <div class="sub">compounded earnings</div>
+        </div>
+        <div class="card summary-card" style="padding:8px 12px;border-color:#1e3a5f">
+          <div class="lbl">Total Gain</div>
+          <div class="val green" id="inv-growth-pct" style="font-size:1.1rem">—</div>
+          <div class="sub">vs. contributions only</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div><!-- end pane-forecast -->
+
+
+<!-- ═══════════════════ PANE: BUDGET ═══════════════════ -->
+<div id="pane-budget" style="display:none">
+  <div class="container">
 
     <!-- Controls row -->
     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-top:4px">
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
         <div class="section-label" style="margin:0">Monthly Budget</div>
-        <select class="ref-select" id="budget-ref-sel" onchange="renderForecastTab()">
+        <select class="ref-select" id="budget-ref-sel" onchange="renderBudgetTab()">
           <option value="avg">vs. Monthly Average</option>
         </select>
       </div>
@@ -420,6 +464,36 @@
       </div>
     </div>
 
+    <!-- Spending breakdown bar chart -->
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-top:22px;margin-bottom:10px">
+      <div class="section-label" style="margin:0">Spending Breakdown</div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <div style="display:flex;border:1px solid #334155;border-radius:7px;overflow:hidden">
+          <button id="chart-metric-btn-budget" onclick="setBudgetChartMetric('budget')"
+            style="padding:3px 12px;font-size:0.74rem;font-weight:600;border:none;cursor:pointer;background:#38bdf8;color:#0f172a;transition:all 0.15s">
+            % of Budget
+          </button>
+          <button id="chart-metric-btn-total" onclick="setBudgetChartMetric('total')"
+            style="padding:3px 12px;font-size:0.74rem;font-weight:600;border:none;cursor:pointer;background:#1e293b;color:#64748b;transition:all 0.15s">
+            % of Total
+          </button>
+        </div>
+        <div style="display:flex;border:1px solid #334155;border-radius:7px;overflow:hidden">
+          <button id="chart-scale-btn-fit" onclick="setBudgetChartScale('fit')"
+            style="padding:3px 12px;font-size:0.74rem;font-weight:600;border:none;cursor:pointer;background:#38bdf8;color:#0f172a;transition:all 0.15s">
+            Fit to View
+          </button>
+          <button id="chart-scale-btn-fixed" onclick="setBudgetChartScale('fixed')"
+            style="padding:3px 12px;font-size:0.74rem;font-weight:600;border:none;cursor:pointer;background:#1e293b;color:#64748b;transition:all 0.15s">
+            0 – 100%
+          </button>
+        </div>
+      </div>
+    </div>
+    <div class="card chart-card" style="padding:20px 24px">
+      <div style="position:relative;height:300px"><canvas id="budgetBarChart"></canvas></div>
+    </div>
+
     <!-- Budget table -->
     <div class="section-label">Category Budgets</div>
     <div class="tx-section">
@@ -437,7 +511,7 @@
     </div>
 
   </div>
-</div><!-- end pane-forecast -->
+</div><!-- end pane-budget -->
 
 
 <!-- ═══════════════════ SCRIPT ═══════════════════ -->
@@ -455,6 +529,9 @@ const CAT_GROUPS = {
 
 // Categories hidden entirely from charts, lists, and budget tab
 const CAT_HIDDEN = new Set(['Travel & Vacation', 'Fees', 'Taxes', 'Uncategorized']);
+
+// Financial transfers/pass-throughs excluded from budget actuals and budget rows
+const BUDGET_SKIP_CATS = new Set(['Savings Transfer', 'Internal Transfers', 'Credit Card Payment', 'Income']);
 
 // Reverse map: child category → parent group name
 const CHILD_TO_GROUP = {};
@@ -511,7 +588,7 @@ const fmt = n => '$' + Math.abs(n).toLocaleString('en-US',{minimumFractionDigits
 const monthData     = {};   // { 'YYYY-MM': { label, transactions[] } }
 let   balanceHistory = [];  // sorted array of balance snapshot objects
 let   activeKey      = 'all';
-let   activeTab      = 'spending';
+let   activeTab      = 'accounts';
 const CI             = {};  // Chart.js instances
 let   expandedCatGroups    = new Set();  // groups open in the category list
 let   expandedBudgetGroups = new Set();  // groups open in the budget tab
@@ -608,9 +685,11 @@ function switchTab(tab) {
   document.getElementById('pane-spending').style.display  = tab === 'spending'  ? 'block' : 'none';
   document.getElementById('pane-accounts').style.display  = tab === 'accounts'  ? 'block' : 'none';
   document.getElementById('pane-forecast').style.display  = tab === 'forecast'  ? 'block' : 'none';
+  document.getElementById('pane-budget').style.display    = tab === 'budget'    ? 'block' : 'none';
   document.getElementById('month-bar').style.display      = tab === 'spending'  ? 'flex'  : 'none';
   if (tab === 'accounts') renderAccountsTab();
   if (tab === 'forecast') renderForecastTab();
+  if (tab === 'budget')   renderBudgetTab();
 }
 
 // ══════════════════════════════════════════════════════════
@@ -622,7 +701,7 @@ function updatePills() {
   if (!keys.length) { bar.innerHTML = '<span class="no-data-msg">No CSV files found — use Manual Load or check your RocketMoneyCSVs folder.</span>'; return; }
   let html = '<span class="month-bar-label">View:</span>';
   html += `<span class="pill${activeKey==='all'?' active':''}" onclick="selectMonth('all')">All Months</span>`;
-  keys.forEach(k => { html += `<span class="pill${activeKey===k?' active':''}" onclick="selectMonth('${k}')">${monthData[k].label}</span>`; });
+  [...keys].reverse().forEach(k => { html += `<span class="pill${activeKey===k?' active':''}" onclick="selectMonth('${k}')">${monthData[k].label}</span>`; });
   html += `<span style="font-size:0.72rem;color:#475569;margin-left:8px">${keys.length} month${keys.length!==1?'s':''} loaded</span>`;
   bar.innerHTML = html;
 }
@@ -698,7 +777,10 @@ function buildDashboard() {
     <div class="section-label">Transactions</div>
     <div class="tx-section">
       <div class="tx-header">
-        <h3 id="tx-count">Transactions</h3>
+        <div style="display:flex;align-items:baseline;gap:14px;flex-wrap:wrap">
+          <h3 id="tx-count">Transactions</h3>
+          <span id="tx-total" style="font-size:0.82rem;font-weight:600;color:#64748b"></span>
+        </div>
         <div class="filters">
           <input type="text" id="q" placeholder="Search…">
           <select id="cf"><option value="">All Categories</option></select>
@@ -850,6 +932,24 @@ function applyFilters() {
   }).sort((a,b)=>b.date.localeCompare(a.date));
   const countEl=document.getElementById('tx-count');
   if(countEl) countEl.textContent=filtered.length+' Transaction'+(filtered.length!==1?'s':'');
+  const totalEl=document.getElementById('tx-total');
+  if(totalEl&&filtered.length){
+    const expTotal=filtered.filter(t=>t.amount>0).reduce((s,t)=>s+t.amount,0);
+    const incTotal=filtered.filter(t=>t.amount<0).reduce((s,t)=>s+Math.abs(t.amount),0);
+    if(incTotal===0){
+      totalEl.textContent=`Total: ${fmt(expTotal)}`;
+      totalEl.style.color='#f87171';
+    } else if(expTotal===0){
+      totalEl.textContent=`Total: +${fmt(incTotal)}`;
+      totalEl.style.color='#4ade80';
+    } else {
+      const net=incTotal-expTotal;
+      totalEl.textContent=`Expenses: ${fmt(expTotal)} · Income: +${fmt(incTotal)} · Net: ${net>=0?'+':''}${fmt(net)}`;
+      totalEl.style.color=net>=0?'#4ade80':'#f87171';
+    }
+  } else if(totalEl){
+    totalEl.textContent='';
+  }
   const tbody=document.getElementById('tbody'); if(!tbody)return;
   tbody.innerHTML=filtered.map(t=>{
     const isIn=t.amount<0, amtColor=isIn?'#4ade80':'#f87171', catColor=getColor(t.category);
@@ -930,10 +1030,30 @@ function renderScatterChart() {
   const dates = balanceHistory.map(s => s.date);
   const datasets = [];
 
+  const DEBT_TYPE_RE = /credit\s*card|loan|mortgage|debt/i;
+
+  function isDebt(a) {
+    return a.value < 0 || (a.type && DEBT_TYPE_RE.test(a.type));
+  }
+
+  function calcNetWorth(snapshot) {
+    return snapshot.accounts.reduce((sum, a) => {
+      if (a.value === null) return sum;
+      return isDebt(a) ? sum - Math.abs(a.value) : sum + a.value;
+    }, 0);
+  }
+
+  function calcTotalAssets(snapshot) {
+    return snapshot.accounts.reduce((sum, a) => {
+      if (a.value === null || isDebt(a)) return sum;
+      return sum + a.value;
+    }, 0);
+  }
+
   // Net Worth line (primary, bold, dashed)
   datasets.push({
     label: '★ Net Worth',
-    data: balanceHistory.map(s => ({ x: s.date, y: +(s.summary.netWorth||0).toFixed(2) })),
+    data: balanceHistory.map(s => ({ x: s.date, y: +calcNetWorth(s).toFixed(2) })),
     borderColor: '#f1f5f9',
     backgroundColor: '#f1f5f922',
     borderWidth: 2.5,
@@ -944,6 +1064,25 @@ function renderScatterChart() {
     tension: 0.35,
     order: 0,
   });
+
+  // All Assets line
+  datasets.push({
+    label: '★ All Assets',
+    data: balanceHistory.map(s => ({ x: s.date, y: +calcTotalAssets(s).toFixed(2) })),
+    borderColor: '#4ade80',
+    backgroundColor: '#4ade8022',
+    borderWidth: 2,
+    borderDash: [4, 3],
+    pointRadius: 6,
+    pointStyle: 'rectRot',
+    showLine: true,
+    tension: 0.35,
+    order: 0,
+  });
+
+  // Load persisted hidden state
+  let hiddenState = {};
+  try { hiddenState = JSON.parse(localStorage.getItem('chart_hidden') || '{}'); } catch {}
 
   // One dataset per account
   [...accountNames].forEach((name, i) => {
@@ -964,36 +1103,45 @@ function renderScatterChart() {
       showLine: true,
       tension: 0.3,
       order: 1,
+      hidden: hiddenState[name] === true,
     });
   });
 
+  // Apply persisted hidden state to Net Worth dataset
+  datasets[0].hidden = hiddenState['★ Net Worth'] === true;
+
   CI['scatterChart'] = new Chart(canvas, {
     type: 'line',
-    data: { labels: dates, datasets },
+    data: { datasets },
     options: {
       responsive: true,
       maintainAspectRatio: false,
       interaction: { mode: 'index', intersect: false },
       plugins: {
-        legend: {
-          position: 'bottom',
-          labels: { color: '#94a3b8', boxWidth: 12, font: { size: 11 }, padding: 10,
-            filter: item => item.text !== null,
-          }
-        },
+        legend: { display: false },
         tooltip: {
           callbacks: {
+            title: items => {
+              const raw = items[0]?.parsed?.x;
+              if (raw == null) return '';
+              const d = new Date(raw);
+              return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+            },
             label: ctx => {
               const v = ctx.parsed.y;
-              return ` ${ctx.dataset.label}: ${v < 0 ? '-' : ''}${fmt(v)}`;
+              return ` ${ctx.dataset.label}: ${v < 0 ? '-' : ''}${fmt(Math.abs(v))}`;
             }
           }
         }
       },
       scales: {
         x: {
-          type: 'category',
-          ticks: { color: '#64748b', font: { size: 11 } },
+          type: 'time',
+          time: {
+            tooltipFormat: 'MMM d, yyyy',
+            displayFormats: { day: "MMM d", week: "MMM d", month: "MMM ''yy", quarter: "MMM ''yy", year: "yyyy" },
+          },
+          ticks: { color: '#64748b', font: { size: 11 }, maxRotation: 30 },
           grid: { color: '#1e293b' },
         },
         y: {
@@ -1006,6 +1154,54 @@ function renderScatterChart() {
       }
     }
   });
+
+  // Render custom legend
+  const legendEl = document.getElementById('scatter-legend');
+  if (legendEl) {
+    legendEl.innerHTML = '';
+    datasets.forEach((ds, i) => {
+      const isHidden = CI['scatterChart'].data.datasets[i].hidden;
+      const btn = document.createElement('button');
+      btn.dataset.idx = i;
+      btn.title = ds.label;
+      btn.style.cssText = [
+        'display:flex', 'align-items:center', 'gap:7px',
+        'background:none', 'border:1px solid #334155', 'border-radius:6px',
+        'padding:4px 8px', 'cursor:pointer', 'text-align:left',
+        'width:100%', 'transition:opacity 0.15s,border-color 0.15s',
+        isHidden ? 'opacity:0.35' : 'opacity:1',
+      ].join(';');
+
+      const swatch = document.createElement('span');
+      swatch.style.cssText = `width:12px;height:12px;border-radius:3px;flex-shrink:0;background:${ds.borderColor};` +
+        (ds.label === '★ Net Worth' ? 'border:2px dashed #f1f5f9;background:transparent;' : '');
+
+      const label = document.createElement('span');
+      label.textContent = ds.label;
+      label.style.cssText = 'font-size:0.72rem;color:#94a3b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;';
+
+      btn.appendChild(swatch);
+      btn.appendChild(label);
+
+      btn.addEventListener('click', () => {
+        const chart = CI['scatterChart'];
+        if (!chart) return;
+        const meta = chart.getDatasetMeta(i);
+        meta.hidden = !meta.hidden;
+        chart.update();
+
+        btn.style.opacity = meta.hidden ? '0.35' : '1';
+
+        // Persist
+        let saved = {};
+        try { saved = JSON.parse(localStorage.getItem('chart_hidden') || '{}'); } catch {}
+        saved[ds.label] = meta.hidden;
+        localStorage.setItem('chart_hidden', JSON.stringify(saved));
+      });
+
+      legendEl.appendChild(btn);
+    });
+  }
 }
 
 // ── Balances table ────────────────────────────────────────
@@ -1083,27 +1279,6 @@ function renderBalancesTable(latest, prev) {
   }).join('');
 }
 
-// ── Scraper launcher ──────────────────────────────────────
-async function runScraper() {
-  const btn    = document.getElementById('scraper-btn');
-  const status = document.getElementById('scraper-status');
-  btn.disabled = true;
-  btn.textContent = '⏳ Launching…';
-  status.textContent = '';
-  try {
-    const res = await fetch('/api/run-scraper', { method: 'POST' });
-    if (!res.ok) throw new Error('Server error');
-    btn.textContent = '✓ Terminal opened';
-    status.textContent = 'Scraper is running in a new terminal window. The server will restart when it finishes — refresh this page to load the new balances.';
-    status.style.color = '#4ade80';
-  } catch {
-    btn.textContent = '▶ Run Scraper';
-    status.textContent = 'Could not reach the server. Make sure node server.js is running.';
-    status.style.color = '#f87171';
-  } finally {
-    btn.disabled = false;
-  }
-}
 
 // ══════════════════════════════════════════════════════════
 //  FORECAST / BUDGET TAB
@@ -1126,6 +1301,7 @@ function setBudget(cat, raw) {
   else delete budgets[cat];
   saveBudgets();
   renderBudgetSummary();
+  renderBudgetChart();
   renderBudgetRows();
   updateCashForecastChart();
 }
@@ -1134,14 +1310,14 @@ function resetAllBudgets() {
   if (!confirm('Clear all saved budget amounts?')) return;
   budgets = {};
   saveBudgets();
-  renderForecastTab();
+  renderBudgetTab();
 }
 
 // Returns { category -> actual spend } for the chosen reference period
 function getActualsByCategory() {
   const sel = document.getElementById('budget-ref-sel');
   const ref = sel ? sel.value : 'avg';
-  const SKIP_CATS = new Set(['Savings Transfer','Internal Transfers','Credit Card Payment','Income',...CAT_HIDDEN]);
+  const SKIP_CATS = new Set([...BUDGET_SKIP_CATS, ...CAT_HIDDEN]);
 
   if (ref === 'avg') {
     const keys = Object.keys(monthData);
@@ -1391,12 +1567,30 @@ function updateCombinedChart() {
     el.textContent = txt; if (cls) el.className = 'val ' + cls;
   };
 
-  // Monthly x-axis labels
-  const labels = Array.from({ length: horizonMonths + 1 }, (_, i) => {
-    if (i === 0) return 'Now';
-    const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
+  // Historical snapshots
+  const histSnaps = balanceHistory; // already sorted by date
+  const histCount = histSnaps.length;
+  const histLabels = histSnaps.map(s => {
+    const d = new Date(s.date + 'T00:00:00');
     return `${MONTH_ABBR[d.getMonth()]} '${String(d.getFullYear()).slice(2)}`;
   });
+
+  // Full x-axis: historical + Now + future
+  const futureLabels = Array.from({ length: horizonMonths }, (_, i) => {
+    const d = new Date(now.getFullYear(), now.getMonth() + i + 1, 1);
+    return `${MONTH_ABBR[d.getMonth()]} '${String(d.getFullYear()).slice(2)}`;
+  });
+  const labels = [...histLabels, 'Now', ...futureLabels];
+
+  // Historical totals from snapshots
+  const histLiquid = histSnaps.map(s =>
+    +s.accounts.filter(a => a.type === 'Checking' || a.type === 'Savings')
+               .reduce((sum, a) => sum + (a.value || 0), 0).toFixed(2)
+  );
+  const histPortTotal = histSnaps.map(s =>
+    +s.accounts.filter(a => a.type === 'Investment')
+               .reduce((sum, a) => sum + (a.value || 0), 0).toFixed(2)
+  );
 
   // ── Investment accounts ─────────────────────────────────
   const domAccts = [];
@@ -1417,6 +1611,12 @@ function updateCombinedChart() {
   let totContrib  = new Array(horizonMonths + 1).fill(0);
 
   domAccts.forEach(acct => {
+    // Historical per-account values from snapshots
+    const histAcct = histSnaps.map(s => {
+      const found = s.accounts.find(a => a.name === acct.snapname);
+      return found && found.value !== null ? +found.value.toFixed(2) : null;
+    });
+
     // Monthly compounding; 2 paychecks per month
     const r = Math.pow(1 + acct.annualReturn / 100, 1 / 12) - 1;
     const contribPerMonth = (acct.contribution + acct.match) * 2;
@@ -1431,26 +1631,34 @@ function updateCombinedChart() {
     }
     portfolio.forEach((v, i)   => { totPort[i]    += v; });
     contribOnly.forEach((v, i) => { totContrib[i] += v; });
+
+    const fullPortfolio  = [...histAcct, ...portfolio];
+    const fullContrib    = [...Array(histCount).fill(null), ...contribOnly];
     datasets.push({
-      label: acct.displayName, data: portfolio,
+      label: acct.displayName, data: fullPortfolio,
       borderColor: acct.color, backgroundColor: acct.color + '18',
       borderWidth: domAccts.length > 1 ? 1.5 : 2.5,
       pointRadius: 0, pointHoverRadius: 4,
       fill: domAccts.length === 1, tension: 0.35, order: 2,
+      segment: { borderDash: ctx => ctx.p0DataIndex >= histCount ? [] : undefined },
     });
   });
 
+  const fullTotPort    = [...histPortTotal, ...totPort];
+  const fullTotContrib = [...Array(histCount).fill(null), ...totContrib];
+
   if (domAccts.length > 1) {
     datasets.unshift({
-      label: '★ Total Portfolio', data: totPort,
+      label: '★ Total Portfolio', data: fullTotPort,
       borderColor: '#f1f5f9', backgroundColor: '#f1f5f910',
       borderWidth: 2.5, pointRadius: 0, pointHoverRadius: 5,
       fill: true, tension: 0.35, order: 0,
+      segment: { borderDash: ctx => ctx.p0DataIndex >= histCount ? [] : undefined },
     });
   }
 
   datasets.push({
-    label: 'Contributions only', data: totContrib,
+    label: 'Contributions only', data: fullTotContrib,
     borderColor: '#334155', backgroundColor: 'transparent',
     borderWidth: 1.5, borderDash: [5, 4], pointRadius: 0,
     fill: false, tension: 0, order: 99,
@@ -1473,7 +1681,9 @@ function updateCombinedChart() {
   if (cSub) cSub.textContent = 'cumulative deposits';
 
   // ── Cash balance ────────────────────────────────────────
+  const netInput    = document.getElementById('cash-net-input');
   const incomeInput = document.getElementById('cash-income-input');
+  const cashMode    = document.getElementById('cash-row-income')?.style.display === 'flex' ? 'income' : 'net';
   const latestSnap  = balanceHistory.length ? balanceHistory[balanceHistory.length - 1] : null;
   let currentLiquid = 0;
   const liquidAccts = [];
@@ -1483,33 +1693,35 @@ function updateCombinedChart() {
       .forEach(a => { currentLiquid += a.value || 0; liquidAccts.push(a.name); });
   }
 
-  let monthlyIncome = 0, incomeSource = '';
-  const rawVal   = incomeInput?.value ?? '';
-  const override = rawVal !== '' ? parseFloat(rawVal) : NaN;
-  if (!isNaN(override) && override >= 0) {
-    monthlyIncome = override; incomeSource = 'manual entry';
+  let netPerMonth = 0;
+  if (cashMode === 'income') {
+    const income = parseFloat(incomeInput?.value) || 0;
+    const budget = getTotalMonthlyBudget();
+    netPerMonth  = income - budget;
+    const dispEl = document.getElementById('cash-income-net-display');
+    if (dispEl) {
+      dispEl.textContent = `− ${fmt(budget)} budget = ${netPerMonth >= 0 ? '+' : ''}${fmt(netPerMonth)} net`;
+      dispEl.style.color = netPerMonth >= 0 ? '#4ade80' : '#f87171';
+    }
   } else {
-    const lastIncome = getLastMonthIncome();
-    if (lastIncome) {
-      monthlyIncome = lastIncome.value; incomeSource = `from ${lastIncome.label}`;
-      if (incomeInput) incomeInput.placeholder = lastIncome.value.toFixed(0);
-    } else { incomeSource = 'no CSV data'; }
+    let netSource = '';
+    const rawNet      = netInput?.value ?? '';
+    const netOverride = rawNet !== '' ? parseFloat(rawNet) : NaN;
+    if (!isNaN(netOverride)) {
+      netPerMonth = netOverride; netSource = 'manual entry';
+    } else {
+      const lastNet = getLastMonthNet();
+      if (lastNet) {
+        netPerMonth = lastNet.value; netSource = `from ${lastNet.label}`;
+        if (netInput) netInput.placeholder = lastNet.value.toFixed(0);
+      } else { netSource = 'no CSV data'; }
+    }
+    const srcEl = document.getElementById('cash-net-source');
+    if (srcEl) srcEl.textContent = netSource ? `(${netSource})` : '';
   }
-
-  const totalBudget = getTotalMonthlyBudget();
-  const netPerMonth = +(monthlyIncome - totalBudget).toFixed(2);
-
-  const srcEl = document.getElementById('cash-income-source');
-  if (srcEl) srcEl.textContent = incomeSource ? `(${incomeSource})` : '';
   setEl('cash-current-bal', latestSnap ? fmt(currentLiquid) : '—', 'blue');
   const subEl = document.getElementById('cash-current-sub');
   if (subEl) subEl.textContent = liquidAccts.length ? liquidAccts.join(' + ') : 'Checking + Savings';
-  setEl('cash-net-month',
-    monthlyIncome > 0 || totalBudget > 0 ? (netPerMonth >= 0 ? '+' : '') + fmt(netPerMonth) : '—',
-    netPerMonth >= 0 ? 'green' : 'red');
-  const netSubEl = document.getElementById('cash-net-sub');
-  if (netSubEl) netSubEl.textContent = monthlyIncome > 0 || totalBudget > 0
-    ? `${fmt(monthlyIncome)} income − ${fmt(totalBudget)} budget` : 'set income & budget to compute';
 
   // Cash projection — one point per month
   const purchases = loadPurchases();
@@ -1527,11 +1739,13 @@ function updateCombinedChart() {
   if (projSubEl) projSubEl.textContent = `in ${horizonYears.toFixed(1)} yrs`;
 
   const cashColor = cashFinal >= currentLiquid ? '#22d3ee' : '#f87171';
+  const fullCashBalances = [...histLiquid, ...cashBalances];
   datasets.push({
-    label: '💧 Liquid Balance', data: cashBalances,
+    label: '💧 Liquid Balance', data: fullCashBalances,
     borderColor: cashColor, backgroundColor: cashColor + '18',
     borderWidth: 2, pointRadius: 0, pointHoverRadius: 5,
     fill: false, tension: 0.25, order: 1,
+    segment: { borderDash: ctx => ctx.p0DataIndex >= histCount ? [] : undefined },
   });
 
   // ── Purchase annotations (month indices) ────────────────
@@ -1545,10 +1759,10 @@ function updateCombinedChart() {
       if (!purchaseHitsMonth(p, d)) continue;
       if (!first) {
         first = true;
-        annotations.push({ index: mo, label: lbl + (p.frequency !== 'single' ? ' ↻' : '') });
+        annotations.push({ index: histCount + mo, label: lbl + (p.frequency !== 'single' ? ' ↻' : '') });
         if (p.frequency === 'single') break;
       } else if (p.frequency !== 'monthly') {
-        annotations.push({ index: mo, label: lbl });
+        annotations.push({ index: histCount + mo, label: lbl });
       }
     }
   });
@@ -1557,10 +1771,29 @@ function updateCombinedChart() {
   const purchaseLinePlugin = {
     id: 'combinedPurchaseLines',
     afterDraw(chart) {
-      const ann = chart.config.options._purchaseAnnotations;
-      if (!ann || !ann.length) return;
       const { ctx, chartArea, scales } = chart;
       const xScale = scales.x;
+      const nowIdx = chart.config.options._histCount;
+
+      // "Today" divider
+      if (nowIdx > 0) {
+        const x = xScale.getPixelForValue(nowIdx);
+        if (x >= chartArea.left && x <= chartArea.right) {
+          ctx.save();
+          ctx.beginPath();
+          ctx.strokeStyle = '#38bdf8'; ctx.lineWidth = 1.5; ctx.setLineDash([6, 3]);
+          ctx.moveTo(x, chartArea.top); ctx.lineTo(x, chartArea.bottom);
+          ctx.stroke(); ctx.setLineDash([]);
+          ctx.font = 'bold 9px system-ui, -apple-system, sans-serif';
+          ctx.fillStyle = '#38bdf8'; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+          ctx.fillText('TODAY', x, chartArea.top + 4);
+          ctx.restore();
+        }
+      }
+
+      // Purchase annotations
+      const ann = chart.config.options._purchaseAnnotations;
+      if (!ann || !ann.length) return;
       const byIdx = {};
       ann.forEach(({ index, label }) => { (byIdx[index] = byIdx[index] || []).push(label); });
       ctx.save();
@@ -1593,6 +1826,7 @@ function updateCombinedChart() {
       responsive: true, maintainAspectRatio: false,
       interaction: { mode: 'index', intersect: false },
       _purchaseAnnotations: annotations,
+      _histCount: histCount,
       plugins: {
         legend: { position: 'bottom', labels: { color: '#94a3b8', font: { size: 11 }, boxWidth: 20, padding: 14 } },
         tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: ${fmt(ctx.parsed.y)}` } },
@@ -1737,11 +1971,29 @@ function loadCashParams() {
 }
 
 function saveCashParams() {
+  const netInput    = document.getElementById('cash-net-input');
   const incomeInput = document.getElementById('cash-income-input');
-  const horizon = parseInt(document.getElementById('cash-horizon')?.value) || 12;
-  const raw = incomeInput?.value ?? '';
-  const incomeOverride = raw !== '' ? parseFloat(raw) : null;
-  try { localStorage.setItem(CASH_PARAMS_KEY, JSON.stringify({ incomeOverride, horizon })); } catch {}
+  const horizon     = parseInt(document.getElementById('cash-horizon')?.value) || 12;
+  const raw         = netInput?.value ?? '';
+  const netOverride = raw !== '' ? parseFloat(raw) : null;
+  const incomeVal    = incomeInput?.value !== '' ? parseFloat(incomeInput?.value) : null;
+  const incomePreset = document.getElementById('cash-income-preset')?.value ?? 'custom';
+  const mode         = document.getElementById('cash-row-income')?.style.display === 'flex' ? 'income' : 'net';
+  try { localStorage.setItem(CASH_PARAMS_KEY, JSON.stringify({ netOverride, horizon, mode, incomeVal, incomePreset })); } catch {}
+}
+
+function setCashMode(mode) {
+  const netRow    = document.getElementById('cash-row-net');
+  const incRow    = document.getElementById('cash-row-income');
+  const btnNet    = document.getElementById('cash-mode-btn-net');
+  const btnIncome = document.getElementById('cash-mode-btn-income');
+  const isNet = mode === 'net';
+  if (netRow)    netRow.style.display    = isNet ? 'flex' : 'none';
+  if (incRow)    incRow.style.display    = isNet ? 'none' : 'flex';
+  if (btnNet)    { btnNet.style.background    = isNet ? '#38bdf8' : '#1e293b'; btnNet.style.color    = isNet ? '#0f172a' : '#64748b'; }
+  if (btnIncome) { btnIncome.style.background = isNet ? '#1e293b' : '#38bdf8'; btnIncome.style.color = isNet ? '#64748b' : '#0f172a'; }
+  saveCashParams();
+  updateCombinedChart();
 }
 
 function getLastMonthIncome() {
@@ -1758,21 +2010,83 @@ function getTotalMonthlyBudget() {
   return +Object.values(budgets).reduce((s, v) => s + (v || 0), 0).toFixed(2);
 }
 
-function resetCashIncome() {
-  const input = document.getElementById('cash-income-input');
-  if (input) { input.value = ''; saveCashParams(); updateCashForecastChart(); }
+function resetCashNet() {
+  const input  = document.getElementById('cash-net-input');
+  const lastNet = getLastMonthNet();
+  if (input) {
+    input.value = lastNet ? lastNet.value : '';
+    saveCashParams();
+    updateCombinedChart();
+  }
 }
 
 function initCashForecastInputs() {
-  const saved = loadCashParams();
-  const slider = document.getElementById('cash-horizon');
-  const label  = document.getElementById('cash-horizon-val');
-  const input  = document.getElementById('cash-income-input');
-  const horizon = saved.horizon ?? 12;
+  const saved       = loadCashParams();
+  const slider      = document.getElementById('cash-horizon');
+  const label       = document.getElementById('cash-horizon-val');
+  const input       = document.getElementById('cash-net-input');
+  const incomeInput = document.getElementById('cash-income-input');
+  const horizon     = saved.horizon ?? 12;
   if (slider) slider.value      = horizon;
   if (label)  label.textContent = horizon + ' mo';
-  if (input && saved.incomeOverride != null) input.value = saved.incomeOverride;
+  if (input && saved.netOverride != null) input.value = saved.netOverride;
+  if (incomeInput && saved.incomeVal != null) incomeInput.value = saved.incomeVal;
+  const incomePresetEl = document.getElementById('cash-income-preset');
+  if (incomePresetEl && saved.incomePreset) incomePresetEl.value = saved.incomePreset;
+  if (saved.mode === 'income') setCashMode('income');
   renderPurchaseRows();
+}
+
+function getLastMonthNet() {
+  const keys = Object.keys(monthData).sort();
+  if (!keys.length) return null;
+  const lastKey = keys[keys.length - 1];
+  const stats   = computeStats(monthData[lastKey].transactions);
+  return { value: +stats.net.toFixed(2), label: monthData[lastKey].label };
+}
+
+function getRollingNetAvg(months) {
+  const keys  = Object.keys(monthData).sort();
+  if (!keys.length) return null;
+  const slice = keys.slice(-months);
+  const avg   = slice.reduce((s, k) => s + computeStats(monthData[k].transactions).net, 0) / slice.length;
+  return +avg.toFixed(2);
+}
+
+function setCashNetFromPreset(sel) {
+  const val = sel.value;
+  if (!val || val === 'custom') return;
+  let net = null;
+  if      (val === 'last') { const r = getLastMonthNet(); if (r) net = r.value; }
+  else if (val === 'avg3') net = getRollingNetAvg(3);
+  else if (val === 'avg6') net = getRollingNetAvg(6);
+  if (net === null) return;
+  const input = document.getElementById('cash-net-input');
+  if (input) { input.value = net; saveCashParams(); updateCombinedChart(); }
+}
+
+function getRollingIncomeAvg(months) {
+  const keys  = Object.keys(monthData).sort();
+  if (!keys.length) return null;
+  const slice = keys.slice(-months);
+  const avg   = slice.reduce((s, k) => {
+    const txns = monthData[k].transactions;
+    return s + txns.filter(t => t.category === 'Income' && t.amount < 0)
+                   .reduce((a, t) => a + Math.abs(t.amount), 0);
+  }, 0) / slice.length;
+  return +avg.toFixed(2);
+}
+
+function setCashIncomeFromPreset(sel) {
+  const val = sel.value;
+  if (!val || val === 'custom') return;
+  let income = null;
+  if      (val === 'last') { const r = getLastMonthIncome(); if (r) income = r.value; }
+  else if (val === 'avg3') income = getRollingIncomeAvg(3);
+  else if (val === 'avg6') income = getRollingIncomeAvg(6);
+  if (income === null) return;
+  const input = document.getElementById('cash-income-input');
+  if (input) { input.value = income; saveCashParams(); updateCombinedChart(); }
 }
 
 function updateCashForecastChart_REMOVED() {
@@ -1941,7 +2255,6 @@ function updateCashForecastChart_REMOVED() {
 }
 
 function renderForecastTab() {
-  // Init investment inputs once (preserves user edits across tab switches)
   if (!forecastInitialized) {
     initInvestInputs();
     forecastInitialized = true;
@@ -1951,31 +2264,182 @@ function renderForecastTab() {
     cashForecastInitialized = true;
   }
   updateCombinedChart();
+}
 
-  // Populate reference-period selector
+function renderBudgetTab() {
   const sel = document.getElementById('budget-ref-sel');
   if (sel) {
     const current = sel.value;
-    const keys = Object.keys(monthData).sort();
+    const keys = Object.keys(monthData).sort().reverse();
     sel.innerHTML = '<option value="avg">vs. Monthly Average</option>' +
       keys.map(k => `<option value="${k}">${monthData[k].label}</option>`).join('');
-    if ([...sel.options].some(o => o.value === current)) sel.value = current;
+    if (!budgetTabInitialized && keys.length) {
+      sel.value = keys[0];
+      budgetTabInitialized = true;
+    } else if ([...sel.options].some(o => o.value === current)) {
+      sel.value = current;
+    } else if (keys.length) {
+      sel.value = keys[0];
+    }
+  }
+  renderBudgetSummary();
+  renderBudgetChart();
+  renderBudgetRows();
+  updateCombinedChart();
+}
+
+let budgetTabInitialized = false;
+let budgetChartMetric = 'budget'; // 'budget' | 'total'
+let budgetChartScale  = 'fit';    // 'fit' | 'fixed'
+
+function setBudgetChartMetric(metric) {
+  budgetChartMetric = metric;
+  ['budget', 'total'].forEach(m => {
+    const btn = document.getElementById(`chart-metric-btn-${m}`);
+    if (btn) { btn.style.background = m === metric ? '#38bdf8' : '#1e293b'; btn.style.color = m === metric ? '#0f172a' : '#64748b'; }
+  });
+  renderBudgetChart();
+}
+
+function setBudgetChartScale(scale) {
+  budgetChartScale = scale;
+  ['fit', 'fixed'].forEach(s => {
+    const btn = document.getElementById(`chart-scale-btn-${s}`);
+    if (btn) { btn.style.background = s === scale ? '#38bdf8' : '#1e293b'; btn.style.color = s === scale ? '#0f172a' : '#64748b'; }
+  });
+  renderBudgetChart();
+}
+
+function renderBudgetChart() {
+  destroyChart('budgetBarChart');
+  const canvas = document.getElementById('budgetBarChart');
+  if (!canvas) return;
+
+  const actuals  = getActualsByCategory();
+  const grouped  = applyGrouping(Object.entries(actuals));
+  const isTotal  = budgetChartMetric === 'total';
+
+  const withBudget = grouped.map(g => {
+    const budget = g.children
+      ? g.children.reduce((s, [c]) => s + (budgets[c] || 0), 0)
+      : (budgets[g.name] || 0);
+    return { ...g, budget };
+  });
+
+  // Total mode: all categories sorted by spend; budget modes: only budgeted categories sorted by % used
+  const items = isTotal
+    ? [...withBudget].sort((a, b) => b.value - a.value)
+    : withBudget.filter(g => g.budget > 0).sort((a, b) => (b.value / b.budget) - (a.value / a.budget));
+
+  if (!items.length) {
+    const ctx = canvas.getContext('2d');
+    canvas.width = canvas.offsetWidth || 600; canvas.height = canvas.offsetHeight || 300;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#334155'; ctx.font = '13px system-ui'; ctx.textAlign = 'center';
+    ctx.fillText(
+      isTotal ? 'No spending data — load CSV files first.' : 'Set category budgets below to see progress here.',
+      canvas.width / 2, canvas.height / 2
+    );
+    return;
   }
 
-  renderBudgetSummary();
-  renderBudgetRows();
+  const totalSpend = withBudget.reduce((s, g) => s + g.value, 0);
+  const labels     = items.map(g => g.name);
+  const pctData    = isTotal
+    ? items.map(g => +((g.value / totalSpend) * 100).toFixed(1))
+    : items.map(g => +((g.value / g.budget) * 100).toFixed(1));
+
+  const colors = items.map(g => {
+    if (isTotal) return getColor(g.name);
+    const pct = g.value / g.budget;
+    return pct >= 1 ? '#f87171' : pct >= 0.75 ? '#facc15' : '#4ade80';
+  });
+
+  // Dashed reference line at 100% (budget modes only)
+  const budgetLinePlugin = {
+    id: 'budgetRefLine',
+    afterDraw(chart) {
+      if (isTotal) return;
+      const { ctx, chartArea, scales } = chart;
+      const y = scales.y.getPixelForValue(100);
+      if (y < chartArea.top || y > chartArea.bottom) return;
+      ctx.save();
+      ctx.beginPath(); ctx.setLineDash([6, 4]);
+      ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 1.5;
+      ctx.moveTo(chartArea.left, y); ctx.lineTo(chartArea.right, y);
+      ctx.stroke(); ctx.setLineDash([]);
+      ctx.font = 'bold 9px system-ui'; ctx.fillStyle = '#94a3b8';
+      ctx.textAlign = 'left'; ctx.textBaseline = 'bottom';
+      ctx.fillText('Budget', chartArea.left + 4, y - 2);
+      ctx.restore();
+    },
+  };
+
+  CI['budgetBarChart'] = new Chart(canvas, {
+    type: 'bar',
+    plugins: [budgetLinePlugin],
+    data: {
+      labels,
+      datasets: [{
+        data: pctData,
+        backgroundColor: colors.map(c => c + 'bb'),
+        borderColor: colors,
+        borderWidth: 1.5,
+        borderRadius: 4,
+      }],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            title: ctx => ctx[0].label,
+            label: item => {
+              const g = items[item.dataIndex];
+              if (isTotal) return [
+                `  Spent: ${fmt(g.value)}`,
+                `  Share: ${pctData[item.dataIndex]}% of total`,
+              ];
+              return [
+                `  Budget: ${fmt(g.budget)}`,
+                `  Spent:  ${fmt(g.value)}`,
+                `  Usage:  ${pctData[item.dataIndex]}%`,
+              ];
+            },
+          },
+          backgroundColor: '#1e293b', titleColor: '#f1f5f9',
+          bodyColor: '#94a3b8', borderColor: '#334155', borderWidth: 1, padding: 10,
+        },
+      },
+      scales: {
+        x: {
+          ticks: { color: '#64748b', font: { size: 10 }, maxRotation: 35, minRotation: 25 },
+          grid: { display: false },
+        },
+        y: {
+          min: 0,
+          max: budgetChartScale === 'fixed' ? 100 : undefined,
+          ticks: { color: '#64748b', font: { size: 10 }, callback: v => v + '%' },
+          grid: { color: '#1e293b' },
+          title: { display: true, text: isTotal ? '% of total spending' : '% of budget', color: '#475569', font: { size: 10 } },
+        },
+      },
+    },
+  });
 }
 
 function renderBudgetSummary() {
   const actuals = getActualsByCategory();
   const cats = Object.keys(actuals);
 
-  let budgetTotal = 0, actualTotal = 0, overCount = 0;
+  const budgetTotal = getTotalMonthlyBudget();
+  let actualTotal = 0, overCount = 0;
   cats.forEach(c => {
     const b = budgets[c];
     const a = actuals[c] || 0;
     if (b !== undefined) {
-      budgetTotal += b;
       actualTotal += a;
       if (a > b) overCount++;
     }
@@ -2054,10 +2518,10 @@ function renderBudgetRows() {
   const actuals = getActualsByCategory();
   const q       = (document.getElementById('budget-search')?.value || '').toLowerCase();
 
-  // All known cats: union of actuals + saved budgets, excluding hidden
+  // All known cats: union of actuals + saved budgets, excluding hidden and skipped
   const allCats = [...new Set([
     ...Object.keys(actuals),
-    ...Object.keys(budgets).filter(c => !CAT_HIDDEN.has(c)),
+    ...Object.keys(budgets).filter(c => !CAT_HIDDEN.has(c) && !BUDGET_SKIP_CATS.has(c)),
   ])];
 
   // Partition into groups and ungrouped
@@ -2136,6 +2600,8 @@ function renderBudgetRows() {
 }
 
 // ══════════════════════════════════════════════════════════
+
+// ══════════════════════════════════════════════════════════
 //  AUTO-LOAD  (fetches from local server API on startup / refresh)
 // ══════════════════════════════════════════════════════════
 async function autoLoad() {
@@ -2148,8 +2614,8 @@ async function autoLoad() {
 
   try {
     const [spendRes, balRes] = await Promise.all([
-      fetch('/api/spending').catch(() => null),
-      fetch('/api/balances').catch(() => null),
+      fetch('http://localhost:3000/api/spending').catch(() => null),
+      fetch('http://localhost:3000/api/balances').catch(() => null),
     ]);
 
     if (spendRes && spendRes.ok) {
@@ -2182,7 +2648,6 @@ async function autoLoad() {
   // Rebuild spending tab
   const keys = Object.keys(monthData).sort();
   if (keys.length) {
-    // Keep activeKey if still valid, else default
     if (!monthData[activeKey]) activeKey = keys.length === 1 ? keys[0] : 'all';
     buildDashboard();
     updatePills();
@@ -2205,6 +2670,28 @@ async function autoLoad() {
       status.style.color = '#4ade80';
       setTimeout(() => { if (status) status.textContent = ''; }, 4000);
     }
+  }
+}
+
+// ── Scraper launcher ──────────────────────────────────────
+async function runScraper() {
+  const btn    = document.getElementById('scraper-btn');
+  const status = document.getElementById('scraper-status');
+  btn.disabled = true;
+  btn.textContent = '⏳ Launching…';
+  status.textContent = '';
+  try {
+    const res = await fetch('http://localhost:3000/api/run-scraper', { method: 'POST' });
+    if (!res.ok) throw new Error('Server error');
+    btn.textContent = '✓ Terminal opened';
+    status.textContent = 'Scraper is running in a new terminal window. The server will restart when it finishes — refresh this page to load the new balances.';
+    status.style.color = '#4ade80';
+  } catch {
+    btn.textContent = '▶ Run Scraper';
+    status.textContent = 'Could not reach the server. Make sure node server.js is running.';
+    status.style.color = '#f87171';
+  } finally {
+    btn.disabled = false;
   }
 }
 
@@ -2437,13 +2924,14 @@ const EMBEDDED_CSV = `Date,Original Date,Account Type,Account Name,Account Numbe
 
 // Pre-load embedded March 2026 data as a fallback baseline
 monthData['2026-03'] = { label: 'March 2026', transactions: parseCSV(EMBEDDED_CSV) };
-activeKey = '2026-03';
+activeKey = 'all';
 buildDashboard();
 updatePills();
 updatePeriodLabel();
 
 // Auto-load from server (overwrites embedded data if server is running)
 autoLoad();
+
 </script>
 </body>
 </html>
